@@ -1,0 +1,44 @@
+package com.nhom12.enggo_backend.entity.exam;
+
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.MapsId;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.experimental.FieldDefaults;
+
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE)
+@Entity
+@Table(name = "question_tags")
+public class QuestionTag {
+    @EmbeddedId
+    QuestionTagId id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @MapsId("questionId")
+    @JoinColumn(name = "question_id", nullable = false)
+    Question question;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @MapsId("themeId")
+    @JoinColumn(name = "theme_id", nullable = false)
+    Theme theme;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @MapsId("skillId")
+    @JoinColumn(name = "skill_id", nullable = false)
+    Skill skill;
+}
