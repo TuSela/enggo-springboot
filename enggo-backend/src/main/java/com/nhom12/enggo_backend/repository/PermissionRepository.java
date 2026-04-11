@@ -1,6 +1,6 @@
 package com.nhom12.enggo_backend.repository;
 
-import com.nhom12.enggo_backend.entity.auth.Permission;
+import com.nhom12.enggo_backend.entity.identity.auth.Permission;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

@@ -2,7 +2,7 @@ package com.nhom12.enggo_backend.mapper;
 
 import com.nhom12.enggo_backend.dto.request.RoleRequest;
 import com.nhom12.enggo_backend.dto.response.RoleResponse;
-import com.nhom12.enggo_backend.entity.auth.Role;
+import com.nhom12.enggo_backend.entity.identity.auth.Role;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 

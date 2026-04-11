@@ -1,4 +1,4 @@
-package com.nhom12.enggo_backend.entity.auth;
+package com.nhom12.enggo_backend.entity.identity.auth;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;

@@ -2,7 +2,7 @@ package com.nhom12.enggo_backend.mapper;
 
 import com.nhom12.enggo_backend.dto.request.PermissionRequest;
 import com.nhom12.enggo_backend.dto.response.PermissionResponse;
-import com.nhom12.enggo_backend.entity.auth.Permission;
+import com.nhom12.enggo_backend.entity.identity.auth.Permission;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 

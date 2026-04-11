@@ -1,6 +1,6 @@
-package com.nhom12.enggo_backend.entity.user;
+package com.nhom12.enggo_backend.entity.identity;
 
-import com.nhom12.enggo_backend.entity.auth.Role;
+import com.nhom12.enggo_backend.entity.identity.auth.Role;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;

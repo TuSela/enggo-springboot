@@ -3,7 +3,7 @@ package com.nhom12.enggo_backend.mapper;
 import com.nhom12.enggo_backend.dto.request.UserCreationRequest;
 import com.nhom12.enggo_backend.dto.request.UserUpdateRequest;
 import com.nhom12.enggo_backend.dto.response.UserResponse;
-import com.nhom12.enggo_backend.entity.user.User;
+import com.nhom12.enggo_backend.entity.identity.User;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;

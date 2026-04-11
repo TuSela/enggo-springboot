@@ -1,6 +1,6 @@
 package com.nhom12.enggo_backend.entity.studygroup;
 
-import com.nhom12.enggo_backend.entity.user.User;
+import com.nhom12.enggo_backend.entity.identity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;

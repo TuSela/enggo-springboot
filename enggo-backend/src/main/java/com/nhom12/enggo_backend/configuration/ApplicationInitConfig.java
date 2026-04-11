@@ -1,8 +1,8 @@
 package com.nhom12.enggo_backend.configuration;
 
 import com.nhom12.enggo_backend.constant.PredefinedRole;
-import com.nhom12.enggo_backend.entity.auth.Role;
-import com.nhom12.enggo_backend.entity.user.User;
+import com.nhom12.enggo_backend.entity.identity.auth.Role;
+import com.nhom12.enggo_backend.entity.identity.User;
 import com.nhom12.enggo_backend.repository.RoleRepository;
 import com.nhom12.enggo_backend.repository.UserRepository;
 import lombok.AccessLevel;
