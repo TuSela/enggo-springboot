@@ -38,5 +38,5 @@ public class QuestionOption {
     String optionText;
 
     @Column(name = "is_correct")
-    Boolean correct;
+    boolean correct;
 }
