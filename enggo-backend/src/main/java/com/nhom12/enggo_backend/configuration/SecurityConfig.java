@@ -25,7 +25,6 @@ public class SecurityConfig {
             "/users/signup", "/auth/login", "/auth/introspect", "/auth/logout", "/auth/refresh"
     };
 
-
     @Autowired
     private CustomJwtDecoder customJwtDecoder;
 
