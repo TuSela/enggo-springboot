@@ -1,0 +1,77 @@
+package com.nhom12.enggo_backend.controller.exam;
+
+import com.nhom12.enggo_backend.dto.request.ApiResponse;
+import com.nhom12.enggo_backend.dto.request.exam.ThemeRequest;
+import com.nhom12.enggo_backend.dto.response.exam.ThemeResponse;
+import com.nhom12.enggo_backend.entity.exam.Theme;
+import com.nhom12.enggo_backend.service.exam.ThemeService;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/themes")
+@RequiredArgsConstructor
+public class ThemeController {
+    private final ThemeService themeService;
+
+    @PostMapping
+    ApiResponse<Theme> addTheme(@RequestBody ThemeRequest request) {
+        return ApiResponse.<Theme>builder()
+                .result(themeService.addTheme(request))
+                .build();
+    }
+
+    //ttin mac dinh la 1 list cac theme dc tao ms nhat do xuong
+    @GetMapping("/all")
+    ApiResponse<Map<String, List<ThemeResponse>>> getAllThemesGroupedByCategory() {
+        return ApiResponse.<Map<String, List<ThemeResponse>>>builder()
+                .result(themeService.getAllThemesGroupedByCategory())
+                .build();
+    }
+
+    @GetMapping("/category")
+    ApiResponse<Map<String, List<Theme>>> getAllThemesByCategory(@RequestParam String category) {
+        return ApiResponse.<Map<String, List<Theme>>>builder()
+                .result(themeService.getAllThemesByCategory(category))
+                .build();
+    }
+
+    @GetMapping("/{id}")
+    ApiResponse<Theme> getTheme(@PathVariable("id") Integer id) {
+        return ApiResponse.<Theme>builder()
+                .result(themeService.getTheme(id))
+                .build();
+    }
+
+    @PutMapping("/{id}")
+    ApiResponse<Theme> updateTheme(
+            @RequestBody ThemeRequest request,
+            @PathVariable("id") Integer id) {
+        return ApiResponse.<Theme>builder()
+                .result(themeService.updateTheme(request, id))
+                .build();
+    }
+
+    @DeleteMapping("/{id}")
+    ApiResponse<String> deleteTheme(@PathVariable("id") Integer id) {
+        themeService.deleteTheme(id);
+        return ApiResponse.<String>builder().result("Theme has been deleted").build();
+    }
+
+    @PutMapping("/{id}/enable")
+    ApiResponse<String> enableTheme(@PathVariable("id")  Integer id) {
+        themeService.enableTheme(id);
+        return ApiResponse.<String>builder().result("Theme has been enabled").build();
+    }
+
+    @PutMapping("/{id}/disable")
+    ApiResponse<String> disableTheme(@PathVariable("id")  Integer id) {
+        themeService.disableTheme(id);
+        return ApiResponse.<String>builder().result("Theme has been disabled").build();
+    }
+}
