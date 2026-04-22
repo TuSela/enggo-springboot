@@ -1,14 +1,11 @@
 spring:
   application:
     name: enggo-backend
-
-
   datasource:
     url: jdbc:mysql://localhost:3306/tienganh_app
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
     password: root
-
   jpa:
     hibernate:
       ddl-auto: update
@@ -17,14 +14,25 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.MySQLDialect
-
+  servlet:
+    multipart:
+      max-file-size: 5MB        # Giới hạn cho 1 file duy nhất
+      max-request-size: 5MB
 server:
   port: 8080
   servlet:
     context-path: /api
-
-
 jwt:
   signer-key: "1TjXchw5FloESb63Kc+DFhTARvpWL4jUGCwfGWxuG5SIf/1y/LgJxHnMqaF6A/ij"
   valid-duration: 3600 # 1 giờ
   refreshable-duration: 36000 # 10 giờ
+cloudinary:
+  cloud-name: ${CLOUDINARY_NAME}
+  api-key: ${CLOUDINARY_KEY}
+  api-secret: ${CLOUDINARY_SECRET}
+app:
+  upload:
+    max-size: 5242880 # 5MB
+    allowed-types:
+      - image/jpeg
+      - image/png

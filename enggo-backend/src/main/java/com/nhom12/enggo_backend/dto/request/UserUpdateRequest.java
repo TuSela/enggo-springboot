@@ -16,6 +16,5 @@ public class UserUpdateRequest {
     String avatarUrl;
     String bio;
     String status;
-
     List<String> roles;
 }

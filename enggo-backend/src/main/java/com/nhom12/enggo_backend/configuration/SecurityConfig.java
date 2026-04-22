@@ -26,7 +26,6 @@ public class SecurityConfig {
             "/skills/**", "/questions/**"
     };
 
-
     @Autowired
     private CustomJwtDecoder customJwtDecoder;
 
