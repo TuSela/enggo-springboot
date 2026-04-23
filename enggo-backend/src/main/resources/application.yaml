@@ -27,9 +27,9 @@ jwt:
   valid-duration: 3600 # 1 giờ
   refreshable-duration: 36000 # 10 giờ
 cloudinary:
-  cloud-name: ${CLOUDINARY_NAME}
-  api-key: ${CLOUDINARY_KEY}
-  api-secret: ${CLOUDINARY_SECRET}
+  cloud-name: dsqdpp6f2
+  api-key: 417138881551446
+  api-secret: 7OLps9lgUtdokGz4GU8_gBw4Mtc
 app:
   upload:
     max-size: 5242880 # 5MB
