@@ -11,4 +11,5 @@ public interface ThemeRepository extends JpaRepository<Theme, Integer> {
     boolean existsByThemeName(String themeName);;
     List<Theme> findByCategory(String category);
     boolean existsByCategory(String category);
+    Theme findByThemeName(String themeName);
 }
