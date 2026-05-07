@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -76,7 +77,7 @@ public class QuestionService {
         return question;
     }
 
-    public void saveQuestionTag(Question question, List<Integer> themeIds, List<Integer> skillIds) {
+    private void saveQuestionTag(Question question, List<Integer> themeIds, List<Integer> skillIds) {
         List<Theme> themes = themeRepository.findAllById(themeIds);
         List<Skill> skills = skillRepository.findAllById(skillIds);
 
@@ -103,7 +104,7 @@ public class QuestionService {
     }
 
     //Kiem tra xem List dap an co rong va co dap an dung ko
-    public void validateOptions(List<QuestionOption> options){
+    private void validateOptions(List<QuestionOption> options){
         if (options == null || options.isEmpty()) {
             throw new RuntimeException("Option is required");
         }
@@ -130,7 +131,15 @@ public class QuestionService {
         return questionMapper.toQuestionDetailResponse(question);
     }
 
-    public PageResponse<QuestionResponse> getAllQuestions(int page, int size, String field, String direction) {
+    public PageResponse<QuestionResponse> getAllQuestions(
+            int page,
+            int size,
+            String field,
+            String direction,
+            List<Integer> themeIds,
+            List<Integer> skillIds,
+            List<Byte> diffs
+    ) {
         //Nhg field dc phep sap xep, neu ko thi mac dinh la createdAt
         List<String> allowedFields = List.of("content", "difficulty", "createdAt");
         String sortField = allowedFields.contains(field) ? field : "createdAt";
@@ -141,7 +150,12 @@ public class QuestionService {
 
         Pageable pageable = PageRequest.of(page - 1, size, sort);
 
-        Page<Integer> ids = questionRepository.findAllIds(pageable);
+        Page<Integer> ids = questionRepository.findIdsByFilter(pageable,
+                themeIds == null || themeIds.isEmpty() ? null : themeIds,
+                skillIds == null || skillIds.isEmpty() ? null : skillIds,
+                diffs == null || diffs.isEmpty() ? null : diffs);
+
+        if (ids.isEmpty()) return PageResponse.of(new PageImpl<>(Collections.emptyList(), pageable, 0));
 
         List<Question> content = questionRepository.findByIds(ids.getContent());
 
@@ -208,33 +222,5 @@ public class QuestionService {
                 existOptions.add(newOption);
             }
         }
-    }
-
-    //Loc cau hoi
-    public PageResponse<QuestionResponse> filterQuestions(
-            Integer page,
-            Integer size,
-            List<Integer> themeIds,
-            List<Integer> skillIds,
-            List<Byte> diffs) {
-        //Lay thong tin paging
-        Pageable pageable = PageRequest.of(page - 1, size);
-
-        //Lay nhg id thoa man input
-        Page<Integer> ids = questionRepository.findIdsByFilter(pageable,
-                themeIds == null || themeIds.isEmpty() ? null : themeIds,
-                skillIds == null || skillIds.isEmpty() ? null : skillIds,
-                diffs == null || diffs.isEmpty() ? null : diffs);
-
-        //Lay question tu id o tren
-        List<Question> content = questionRepository.findByIds(ids.getContent());
-
-        //Chuyen sang response
-        List<QuestionResponse> responses = questionMapper.toQuestionResponses(content);
-
-        //Chuyen sang page
-        Page<QuestionResponse> responsePage = new PageImpl<>(responses, pageable, ids.getTotalElements());
-
-        return PageResponse.of(responsePage);
     }
 }

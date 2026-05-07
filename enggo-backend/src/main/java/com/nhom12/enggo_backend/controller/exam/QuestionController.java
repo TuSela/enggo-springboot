@@ -44,10 +44,13 @@ public class QuestionController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "DESC") String direction,
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) List<Integer> themeIds,
+            @RequestParam(required = false) List<Integer> skillIds,
+            @RequestParam(required = false) List<Byte> diffs
     ) {
         return ApiResponse.<PageResponse<QuestionResponse>>builder()
-                .result(questionService.getAllQuestions(page, size, sortBy, direction))
+                .result(questionService.getAllQuestions(page, size, sortBy, direction, themeIds, skillIds, diffs))
                 .build();
     }
 
@@ -57,19 +60,6 @@ public class QuestionController {
             @RequestBody QuestionUpdateRequest request) {
         return ApiResponse.<QuestionDetailResponse>builder()
                 .result(questionService.updateQuestion(id, request))
-                .build();
-    }
-
-    @GetMapping("/filter")
-    ApiResponse<PageResponse<QuestionResponse>> filterQuestions(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) List<Integer> themeIds,
-            @RequestParam(required = false) List<Integer> skillIds,
-            @RequestParam(required = false) List<Byte> diffs
-    ) {
-        return ApiResponse.<PageResponse<QuestionResponse>>builder()
-                .result(questionService.filterQuestions(page, size, themeIds, skillIds, diffs))
                 .build();
     }
 }

@@ -20,12 +20,12 @@ public interface QuestionRepository extends JpaRepository<Question, Integer> {
     Page<Integer> findAllIds(Pageable pageable);
 
     @Query("""
-        SELECT DISTINCT q.id FROM Question q
+        SELECT q.id FROM Question q
         LEFT JOIN q.tags t
         WHERE (:themeIds IS NULL OR t.theme.id IN :themeIds)
         AND (:skillIds IS NULL OR t.skill.id IN :skillIds)
         AND (:diffs IS NULL OR q.difficulty IN :diffs)
-        ORDER BY q.id DESC
+        GROUP BY q.id, q.createdAt
     """)
     Page<Integer> findIdsByFilter(
             Pageable pageable,
@@ -39,7 +39,7 @@ public interface QuestionRepository extends JpaRepository<Question, Integer> {
         LEFT JOIN FETCH t.theme
         LEFT JOIN FETCH t.skill
         WHERE q.id IN :ids
-        ORDER BY q.createdAt DESC
+        ORDER BY q.createdAt
     """)
     List<Question> findByIds(@Param("ids") List<Integer> ids);
 
