@@ -17,6 +17,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @Builder
@@ -42,8 +44,14 @@ public class ExamAttemptDetail {
     @JoinColumn(name = "selected_option_id")
     QuestionOption selectedOption;
 
+    @Column(name = "user_input")
+    String userInput;
+
     @Column(name = "is_correct")
-    Boolean correct;
+    boolean correct;
+
+    @Column(name = "score")
+    BigDecimal score;
 
     @Column(name = "response_time_ms")
     Integer responseTimeMs;
