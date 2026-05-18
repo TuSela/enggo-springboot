@@ -2,14 +2,12 @@ package com.nhom12.enggo_backend.mapper.exam;
 
 import com.nhom12.enggo_backend.dto.response.UserMinimalResponse;
 import com.nhom12.enggo_backend.dto.response.exam.*;
-import com.nhom12.enggo_backend.entity.exam.Exam;
-import com.nhom12.enggo_backend.entity.exam.ExamQuestion;
-import com.nhom12.enggo_backend.entity.exam.ExamTag;
-import com.nhom12.enggo_backend.entity.exam.Theme;
+import com.nhom12.enggo_backend.entity.exam.*;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 @Mapper(componentModel = "spring", uses = {QuestionMapper.class})
@@ -54,4 +52,104 @@ public interface ExamMapper {
     ExamResponse toExamResponse(Exam exam);
 
     List<ExamResponse> toExamResponses(List<Exam> exams);
+
+    @Mapping(target = "questions", source = "examQuestions")
+    ExamDisplayResponse toExamDisplayResponse(Exam exam);
+
+    @Mapping(target = "orderPriority", source = "orderPriority")
+    @Mapping(target = "question", source = "question")
+    ExamQuestionDisplayResponse toExamQuestionDisplayResponse(ExamQuestion examQuestion);
+
+    default QuestionDisplayResponse toQuestionDisplayResponse(Question question) {
+        if  (question == null) {
+            return null;
+        }
+
+        var response = switch (question.getQuestionType()) {
+            case "MATCHING" -> toMatchingTypeResponse(question.getOptions());
+            case "FILL_BLANK" -> toFillBlankTypeResponse(question.getOptions());
+            default -> toMultipleTypeResponse(question.getOptions());
+        };
+
+        if (response != null) {
+            response.setId(question.getId());
+            response.setContent(question.getContent());
+            response.setQuestionType(question.getQuestionType());
+            response.setAttachmentUrl(question.getAttachmentUrl());
+        }
+
+        return response;
+    }
+
+    MultipleOptionResponse toMultipleOptionResponse(QuestionOption questionOption);
+
+    default MultipleTypeResponse toMultipleTypeResponse (List<QuestionOption> options) {
+        if  (options == null || options.isEmpty()) {
+            return null;
+        }
+
+        var response = new MultipleTypeResponse();
+        response.setMultipleOptions(
+                options.stream()
+                        .map(this::toMultipleOptionResponse)
+                        .toList()
+        );
+
+        return response;
+    };
+
+    default FillBlankOptionResponse toFillBlankOptionResponse(QuestionOption option) {
+        if (option == null) return null;
+
+        var response = new FillBlankOptionResponse();
+        response.setBlankId(option.getId());
+        response.setPosition(
+                Integer.parseInt(option.getOption_group().replace("BLANK_", ""))
+        );
+        response.setPlaceholder(null);
+        response.setMaxLength(option.getOptionText().length());
+        return response;
+    }
+
+    default FillBlankTypeResponse toFillBlankTypeResponse (List<QuestionOption> options) {
+        if   (options == null || options.isEmpty()) {
+            return null;
+        }
+
+        var response = new  FillBlankTypeResponse();
+        response.setFillBlankOptions(
+                options.stream()
+                        .filter(o -> o.getOption_group() != null && o.getOption_group().startsWith("BLANK_"))
+                        .sorted(Comparator.comparing(o -> Integer.parseInt(o.getOption_group().replace("BLANK_", ""))))
+                        .map(this::toFillBlankOptionResponse)
+                        .toList()
+        );
+
+        return response;
+    };
+
+
+    default MatchingTypeResponse toMatchingTypeResponse(List<QuestionOption> options) {
+        if  (options == null || options.isEmpty()) {
+            return null;
+        }
+
+        var response = new MatchingTypeResponse();
+        response.setLeftOptions(
+                options.stream()
+                        .filter(o -> "LEFT".equals(o.getOption_group()))
+                        .map(this::toMultipleOptionResponse)
+                        .toList()
+        );
+
+        List<MultipleOptionResponse> right = new java.util.ArrayList<>(options.stream()
+                .filter(o -> "RIGHT".equals(o.getOption_group()))
+                .map(this::toMultipleOptionResponse)
+                .toList());
+
+        Collections.shuffle(right);
+        response.setRightOptions(right);
+
+        return response;
+    }
 }
