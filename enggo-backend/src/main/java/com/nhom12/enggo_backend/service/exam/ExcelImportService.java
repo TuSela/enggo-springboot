@@ -109,6 +109,7 @@ public class ExcelImportService {
                         .difficulty((byte) row.getCell(4).getNumericCellValue())
                         .attachmentUrl(getCellString(row, 5))
                         .createdBy(user)
+                        .questionType(getCellString(row, 6))
                         .build();
                 questionRepository.save(question);
             }
@@ -132,6 +133,8 @@ public class ExcelImportService {
                     .question(question)
                     .optionText(getCellString(row, 1))
                     .correct(row.getCell(2).getBooleanCellValue())
+                    .option_group(getCellString(row, 3))
+                    .match_key(getCellString(row, 4))
                     .build();
 
             questionOptions.add(questionOption);
