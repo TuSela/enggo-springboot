@@ -1,9 +1,6 @@
 package com.nhom12.enggo_backend.mapper.exam;
 
-import com.nhom12.enggo_backend.dto.request.exam.OptionRequest;
-import com.nhom12.enggo_backend.dto.request.exam.OptionUpdateRequest;
-import com.nhom12.enggo_backend.dto.request.exam.QuestionCreationRequest;
-import com.nhom12.enggo_backend.dto.request.exam.QuestionUpdateRequest;
+import com.nhom12.enggo_backend.dto.request.exam.*;
 import com.nhom12.enggo_backend.dto.response.exam.*;
 import com.nhom12.enggo_backend.entity.exam.Question;
 import com.nhom12.enggo_backend.entity.exam.QuestionOption;
@@ -34,6 +31,8 @@ public interface QuestionMapper {
     QuestionOption toEntity(OptionUpdateRequest request);
 
     @Mapping(target = "isCorrect", source = "correct")
+    @Mapping(target = "optionGroup", source = "option_group")
+    @Mapping(target = "matchKey", source = "match_key")
     OptionResponse toOptionResponse(QuestionOption option);
 
     @Mapping(target = "themes", expression = "java(mapThemes(question.getTags()))")
@@ -77,4 +76,35 @@ public interface QuestionMapper {
     void updateOption(@MappingTarget QuestionOption option, OptionUpdateRequest request);
 
     Question toQuestion(QuestionDetailResponse response);
+
+    default List<QuestionOption> mapFillBlankOption(List<FillBlankOptionRequest> blanks, Question question) {
+        if (blanks == null || blanks.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return blanks.stream()
+                .map(b -> QuestionOption.builder()
+                        .question(question)
+                        .optionText(b.getCorrectValue())
+                        .correct(true)
+                        .option_group("BLANK_" + b.getPosition())
+                        .build()
+                ).toList();
+    }
+
+    default List<QuestionOption> mapMatchingQuestion(List<OptionRequest> requests, Question question) {
+        if (requests == null || requests.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return requests.stream()
+                .map(r -> QuestionOption.builder()
+                        .question(question)
+                        .optionText(r.getOptionText())
+                        .correct(r.isCorrect())
+                        .option_group(r.getOptionGroup())
+                        .match_key(r.getMatchKey())
+                        .build()
+                ).toList();
+    }
 }

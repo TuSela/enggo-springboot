@@ -4,8 +4,8 @@ import com.nhom12.enggo_backend.dto.request.exam.OptionUpdateRequest;
 import com.nhom12.enggo_backend.dto.request.exam.QuestionCreationRequest;
 import com.nhom12.enggo_backend.dto.request.exam.QuestionUpdateRequest;
 import com.nhom12.enggo_backend.dto.response.PageResponse;
-import com.nhom12.enggo_backend.dto.response.exam.QuestionDetailResponse;
 import com.nhom12.enggo_backend.dto.response.exam.QuestionResponse;
+import com.nhom12.enggo_backend.dto.response.exam.QuestionDetailResponse;
 import com.nhom12.enggo_backend.entity.exam.*;
 import com.nhom12.enggo_backend.entity.identity.User;
 import com.nhom12.enggo_backend.mapper.UserMapper;
@@ -60,9 +60,11 @@ public class QuestionService {
         question.setCreatedBy(user);
 
         //Lay nhg request dap an cua question de tao entity option tuong ung
-        List<QuestionOption> options = questionMapper.toQuestionOptions(request.getOptions());
-
-        validateOptions(options);
+        List<QuestionOption> options = switch (request.getQuestionType()) {
+            case "FILL_BLANK" -> questionMapper.mapFillBlankOption(request.getBlankAnswers(), question);
+            case "MATCHING" -> questionMapper.mapMatchingQuestion(request.getOptions(), question);
+            default -> questionMapper.toQuestionOptions(request.getOptions());
+        };
 
         //Gan quan he question voi tung option
         for (QuestionOption option : options) {
