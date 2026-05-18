@@ -39,4 +39,10 @@ public class QuestionOption {
 
     @Column(name = "is_correct")
     boolean correct;
+
+    @Column(name = "option_group")
+    String option_group;
+
+    @Column(name = "match_key")
+    String match_key;
 }
