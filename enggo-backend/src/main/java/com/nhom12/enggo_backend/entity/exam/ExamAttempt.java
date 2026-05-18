@@ -49,8 +49,8 @@ public class ExamAttempt {
     @Column(name = "completed_at")
     LocalDateTime completedAt;
 
-    @Column(length = 50)
-    String status;
+    @Column(name = "is_complete")
+    Boolean complete;
 
     @OneToMany(mappedBy = "attempt", cascade = CascadeType.ALL, orphanRemoval = true)
     List<ExamAttemptDetail> examAttemptDetails = new ArrayList<>();
