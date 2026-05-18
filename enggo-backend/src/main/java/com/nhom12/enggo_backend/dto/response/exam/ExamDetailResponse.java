@@ -16,7 +16,7 @@ public class ExamDetailResponse {
     Integer totalQuestions;
     Integer durationMinutes;
     Boolean active;
-    private UserMinimalResponse createdBy;
+    UserMinimalResponse createdBy;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
     List<ExamQuestionResponse> questions;
