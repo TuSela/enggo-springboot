@@ -4,11 +4,10 @@ import com.nhom12.enggo_backend.dto.request.ApiResponse;
 import com.nhom12.enggo_backend.dto.request.exam.QuestionCreationRequest;
 import com.nhom12.enggo_backend.dto.request.exam.QuestionUpdateRequest;
 import com.nhom12.enggo_backend.dto.response.PageResponse;
-import com.nhom12.enggo_backend.dto.response.exam.QuestionDetailResponse;
 import com.nhom12.enggo_backend.dto.response.exam.QuestionResponse;
+import com.nhom12.enggo_backend.dto.response.exam.QuestionDetailResponse;
 import com.nhom12.enggo_backend.service.exam.QuestionService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
