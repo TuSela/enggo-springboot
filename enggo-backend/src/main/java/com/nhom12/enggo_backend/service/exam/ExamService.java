@@ -2,24 +2,26 @@ package com.nhom12.enggo_backend.service.exam;
 
 import com.nhom12.enggo_backend.dto.response.PageResponse;
 import com.nhom12.enggo_backend.dto.response.exam.ExamDetailResponse;
+import com.nhom12.enggo_backend.dto.response.exam.ExamDisplayResponse;
 import com.nhom12.enggo_backend.dto.response.exam.ExamQuestionResponse;
 import com.nhom12.enggo_backend.dto.response.exam.ExamResponse;
 import com.nhom12.enggo_backend.entity.exam.*;
+import com.nhom12.enggo_backend.entity.identity.User;
 import com.nhom12.enggo_backend.mapper.exam.ExamMapper;
+import com.nhom12.enggo_backend.repository.UserRepository;
 import com.nhom12.enggo_backend.repository.exam.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
+import java.time.LocalDateTime;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +36,8 @@ public class ExamService {
     private final QuestionRepository questionRepository;
     @PersistenceContext
     private EntityManager entityManager;
+    private final UserRepository userRepository;
+    private final ExamAttemptRepository examAttemptRepository;
 
     private void saveExamTag(Exam exam, List<Integer> themeIds, List<Integer> skillIds){
         List<Theme> themes = themeRepository.findAllById(themeIds);
@@ -144,5 +148,32 @@ public class ExamService {
         Page<ExamResponse> responsePage = new PageImpl<ExamResponse>(responses, pageable, ids.getTotalElements());
 
         return PageResponse.of(responsePage);
+    }
+
+    public ExamDisplayResponse startExam (Integer examId) {
+        String username = Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getName();
+        User user = userRepository.findByUsername(username).orElseThrow(RuntimeException::new);
+
+        var exam = examRepository.findById(examId).orElseThrow(RuntimeException::new);
+
+        if (!exam.getActive()) {
+            throw new IllegalStateException("Exam has been stopped");
+        }
+
+        boolean hasOngoing = examAttemptRepository.existsByUserIdAndCompleteFalse(user.getId());
+
+        if (hasOngoing) {
+            throw new IllegalStateException("You have an ongoing attempt");
+        }
+
+        ExamAttempt attempt = ExamAttempt.builder()
+                .user(user)
+                .exam(exam)
+                .complete(false)
+                .startedAt(LocalDateTime.now())
+                .build();
+        examAttemptRepository.save(attempt);
+
+        return examMapper.toExamDisplayResponse(exam);
     }
 }

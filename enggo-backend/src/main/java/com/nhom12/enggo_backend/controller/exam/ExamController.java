@@ -1,10 +1,15 @@
 package com.nhom12.enggo_backend.controller.exam;
 
 import com.nhom12.enggo_backend.dto.request.ApiResponse;
+import com.nhom12.enggo_backend.dto.request.exam.ExamSubmitRequest;
 import com.nhom12.enggo_backend.dto.response.PageResponse;
 import com.nhom12.enggo_backend.dto.response.exam.ExamDetailResponse;
+import com.nhom12.enggo_backend.dto.response.exam.ExamDisplayResponse;
 import com.nhom12.enggo_backend.dto.response.exam.ExamResponse;
+import com.nhom12.enggo_backend.dto.response.exam.ExamSubmitResponse;
+import com.nhom12.enggo_backend.repository.exam.ExamAttemptRepository;
 import com.nhom12.enggo_backend.repository.exam.ExamRepository;
+import com.nhom12.enggo_backend.service.exam.ExamAttemptService;
 import com.nhom12.enggo_backend.service.exam.ExamService;
 import com.nhom12.enggo_backend.service.exam.ExcelImportService;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +25,7 @@ import java.util.List;
 public class ExamController {
     private final ExcelImportService  excelImportService;
     private final ExamService examService;
+    private final ExamAttemptService attemptService;
 
     @PostMapping("/import")
     ApiResponse<ExamDetailResponse> importExamExcel(@RequestParam("file") MultipartFile file) throws IOException {
@@ -55,6 +61,23 @@ public class ExamController {
     ) {
         return ApiResponse.<PageResponse<ExamResponse>>builder()
                 .result(examService.getAllExams(page,size,sortBy,direction,themeIds,skillIds,diffs))
+                .build();
+    }
+
+    @GetMapping("/{id}/start")
+    ApiResponse<ExamDisplayResponse> startExam (@PathVariable("id") Integer id){
+        return ApiResponse.<ExamDisplayResponse>builder()
+                .result(examService.startExam(id))
+                .build();
+    }
+
+    @PostMapping("/{examId}/attempt/{attemptId}/submit")
+    ApiResponse<ExamSubmitResponse> submitExam (
+            @RequestBody ExamSubmitRequest examSubmitRequest,
+            @PathVariable("examId") Integer examId,
+            @PathVariable("attemptId") Integer attemptId) {
+        return ApiResponse.<ExamSubmitResponse>builder()
+                .result(attemptService.submitExam(examSubmitRequest, examId, attemptId))
                 .build();
     }
 }
