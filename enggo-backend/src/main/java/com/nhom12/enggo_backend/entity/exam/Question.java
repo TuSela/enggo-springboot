@@ -47,6 +47,9 @@ public class Question {
     @JoinColumn(name = "created_by", nullable = false)
     User createdBy;
 
+    @Column(name = "question_type")
+    String questionType;
+
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")

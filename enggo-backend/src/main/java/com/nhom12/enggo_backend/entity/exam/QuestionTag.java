@@ -26,12 +26,12 @@ public class QuestionTag {
     @JoinColumn(name = "question_id", nullable = false)
     Question question;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @MapsId("themeId")
     @JoinColumn(name = "theme_id", nullable = false)
     Theme theme;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @MapsId("skillId")
     @JoinColumn(name = "skill_id", nullable = false)
     Skill skill;

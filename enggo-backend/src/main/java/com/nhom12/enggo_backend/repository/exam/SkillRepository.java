@@ -8,4 +8,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface SkillRepository extends JpaRepository<Skill, Integer> {
     boolean existsBySkillName(String skillName);
+    Skill findBySkillName(String skillName);
 }

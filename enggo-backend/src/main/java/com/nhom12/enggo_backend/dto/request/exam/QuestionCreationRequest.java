@@ -8,6 +8,7 @@ import java.util.List;
 
 @Data
 public class QuestionCreationRequest {
+    String questionType;
     @NotNull
     @NotEmpty
     String content;
@@ -22,6 +23,7 @@ public class QuestionCreationRequest {
     String attachmentUrl;
 
     List<OptionRequest> options;
+    List<FillBlankOptionRequest> blankAnswers;
 
     List<Integer> themeIds;
     List<Integer> skillIds;

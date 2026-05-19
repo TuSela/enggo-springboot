@@ -11,8 +11,8 @@ import java.util.List;
 
 @Data
 public class QuestionUpdateRequest {
-    private String content;
-    private String explanation;
+    String content;
+    String explanation;
     Byte difficulty;
     String attachmentUrl;
     List<Integer> themeIds;
