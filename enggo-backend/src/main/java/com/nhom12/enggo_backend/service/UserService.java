@@ -3,6 +3,7 @@ package com.nhom12.enggo_backend.service;
 import com.nhom12.enggo_backend.constant.PredefinedRole;
 import com.nhom12.enggo_backend.dto.request.UserCreationRequest;
 import com.nhom12.enggo_backend.dto.request.UserUpdateRequest;
+import com.nhom12.enggo_backend.dto.response.UserMinimalResponse;
 import com.nhom12.enggo_backend.dto.response.UserResponse;
 import com.nhom12.enggo_backend.entity.identity.auth.Role;
 import com.nhom12.enggo_backend.entity.identity.User;
@@ -62,6 +63,19 @@ public class UserService {
         User user = userRepository.findByUsername(name).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
         return userMapper.toUserResponse(user);
+    }
+
+    public List<UserMinimalResponse> searchUsersByUsername(String username) {
+        String keyword = username == null ? "" : username.trim();
+
+        if (keyword.isEmpty()) {
+            return List.of();
+        }
+
+        return userRepository.findByUsernameContainingIgnoreCase(keyword)
+                .stream()
+                .map(userMapper::toUserMinimalResponse)
+                .toList();
     }
 
     @PostAuthorize("returnObject.username == authentication.name")

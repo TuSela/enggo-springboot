@@ -2,12 +2,13 @@ package com.nhom12.enggo_backend.mapper;
 
 import com.nhom12.enggo_backend.dto.request.UserCreationRequest;
 import com.nhom12.enggo_backend.dto.request.UserUpdateRequest;
+import com.nhom12.enggo_backend.dto.response.UserMinimalResponse;
 import com.nhom12.enggo_backend.dto.response.UserResponse;
 import com.nhom12.enggo_backend.entity.identity.User;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
-
+//test comment
 @Mapper(componentModel = "spring", uses = RoleMapper.class)
 public interface UserMapper {
     @Mapping(target = "id", ignore = true)
@@ -25,6 +26,8 @@ public interface UserMapper {
     User toUser(UserCreationRequest request);
 
     UserResponse toUserResponse(User user);
+
+    UserMinimalResponse toUserMinimalResponse(User user);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "username", ignore = true)
