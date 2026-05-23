@@ -23,7 +23,10 @@ import org.springframework.web.filter.CorsFilter;
 public class SecurityConfig {
     private final String[] PUBLIC_ENDPOINTS = {
             "/users/signup", "/auth/login", "/auth/introspect", "/auth/logout", "/auth/refresh", "/themes/**",
-            "/skills/**", "/questions/**", "/exams/**", "/attempts/**"
+            "/skills/**", "/questions/**", "/exams/**", "/attempts/**", "/gamification/**","/swagger-ui/**",
+            "/swagger-ui.html",
+            "/v3/api-docs/**",
+            "/v3/api-docs.yaml"
     };
 
     @Autowired
@@ -33,6 +36,8 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity.authorizeHttpRequests(request -> request.requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS)
                 .permitAll()
+                .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+
                 .anyRequest()
                 .authenticated());
 
