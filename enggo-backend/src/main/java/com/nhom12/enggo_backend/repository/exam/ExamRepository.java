@@ -40,13 +40,15 @@ public interface ExamRepository extends JpaRepository<Exam,Integer> {
             WHERE (:themeIds IS NULL OR t.theme.id IN :themeIds)
             AND (:skillIds IS NULL OR t.skill.id IN :skillIds)
             AND (:diffs IS NULL OR e.difficulty IN :diffs)
+            AND (:totalQuestions IS NULL OR e.totalQuestions = :totalQuestions)
             GROUP BY e.id, e.createdAt
             """)
     Page<Integer> findIdsByFilter(
             Pageable pageable,
             @Param("themeIds") List<Integer> themeIds,
             @Param("skillIds") List<Integer> skillIds,
-            @Param("diffs") List<Byte> diffs
+            @Param("diffs") List<Byte> diffs,
+            @Param("totalQuestions") Integer totalQuestions
     );
 
     @Query("""

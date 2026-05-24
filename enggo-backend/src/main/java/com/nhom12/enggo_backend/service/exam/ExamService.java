@@ -124,8 +124,9 @@ public class ExamService {
             String direction,
             List<Integer> themeIds,
             List<Integer> skillIds,
-            List<Byte> diffs) {
-        List<String> allowFields = List.of("title", "difficulty", "createdAt");
+            List<Byte> diffs,
+            Integer totalQuestions) {
+        List<String> allowFields = List.of("title", "difficulty", "createdAt", "totalQuestions");
         String sortField = allowFields.contains(field) ? field : "createdAt";
 
         Sort sort = direction.equalsIgnoreCase("ASC")
@@ -137,7 +138,8 @@ public class ExamService {
         Page<Integer> ids = examRepository.findIdsByFilter(pageable,
                 themeIds == null || themeIds.isEmpty() ? null : themeIds,
                 skillIds == null || skillIds.isEmpty() ? null : skillIds,
-                diffs == null || diffs.isEmpty() ? null : diffs);
+                diffs == null || diffs.isEmpty() ? null : diffs,
+                totalQuestions);
 
         if (ids.isEmpty()) return PageResponse.of(new PageImpl<>(Collections.emptyList(), pageable, 0));
 
@@ -174,6 +176,6 @@ public class ExamService {
                 .build();
         examAttemptRepository.save(attempt);
 
-        return examMapper.toExamDisplayResponse(exam);
+        return examMapper.toExamDisplayResponse(exam, attempt);
     }
 }

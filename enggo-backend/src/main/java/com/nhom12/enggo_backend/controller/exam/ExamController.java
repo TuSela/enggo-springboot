@@ -57,10 +57,11 @@ public class ExamController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) List<Integer> themeIds,
             @RequestParam(required = false) List<Integer> skillIds,
-            @RequestParam(required = false) List<Byte> diffs
+            @RequestParam(required = false) List<Byte> diffs,
+            @RequestParam(required = false) Integer totalQuestions
     ) {
         return ApiResponse.<PageResponse<ExamResponse>>builder()
-                .result(examService.getAllExams(page,size,sortBy,direction,themeIds,skillIds,diffs))
+                .result(examService.getAllExams(page,size,sortBy,direction,themeIds,skillIds,diffs, totalQuestions))
                 .build();
     }
 
