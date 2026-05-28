@@ -18,7 +18,7 @@ import java.util.Map;
 public class UploadsService {
     @Autowired Cloudinary cloudinary;
     private static final List<String> ALLOWED_IMAGE_TYPES =
-            List.of("image/jpeg", "image/png", "image/webp", "image/jpg");
+            List.of("image/jpeg", "image/png", "image/webp", "image/jpg","image/svg");
 
     // Giới hạn dung lượng (ví dụ 5MB)
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024;
