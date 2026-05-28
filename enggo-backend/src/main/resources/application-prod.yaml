@@ -1,0 +1,11 @@
+#spring:
+#  datasource:
+#    # Điền thẳng tên container MySQL và database trên AWS vào đây
+#    url: jdbc:mysql://enggo-mysql:3306/tienganh_app
+#    driver-class-name: com.mysql.cj.jdbc.Driver
+#    username: root
+#    password: root
+#  jpa:
+#    hibernate:
+#      ddl-auto: update
+#    show-sql: false # Tắt hiển thị SQL trên Production để log sạch hơn, đỡ tốn RAM

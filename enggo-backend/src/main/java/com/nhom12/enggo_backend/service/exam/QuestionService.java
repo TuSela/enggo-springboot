@@ -110,7 +110,7 @@ public class QuestionService {
         if (options == null || options.isEmpty()) {
             throw new RuntimeException("Option is required");
         }
-
+        
         boolean hasCorrect = options.stream().anyMatch(QuestionOption::isCorrect);
 
         boolean hasOption = options.size() >= 2;

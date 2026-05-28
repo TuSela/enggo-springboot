@@ -76,12 +76,9 @@ public class ExamService {
         saveExamTag(exam, themeIds, skillIds);
         entityManager.flush();
         entityManager.clear();
-
         Exam finalExam = examRepository.findByIdWithQuestions(examId)
                 .orElseThrow(() -> new RuntimeException("Exam not found"));
-
         examRepository.findByIdWithTags(examId);
-
         return toExamDetailResponse(finalExam);
     }
 

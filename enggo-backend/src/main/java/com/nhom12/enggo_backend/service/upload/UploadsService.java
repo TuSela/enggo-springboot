@@ -23,7 +23,7 @@ public class UploadsService {
     // Giới hạn dung lượng (ví dụ 5MB)
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024;
         public String uploadImage(MultipartFile file) throws IOException {
-            if (file.isEmpty()) {
+            if (file == null || file.isEmpty()) {
                 throw new AppException(ErrorCode.FILE_EMPTY);
             }
 

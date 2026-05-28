@@ -26,7 +26,7 @@ public class SecurityConfig {
             "/skills/**", "/questions/**", "/exams/**", "/attempts/**", "/gamification/**","/swagger-ui/**",
             "/swagger-ui.html",
             "/v3/api-docs/**",
-            "/v3/api-docs.yaml"
+            "/v3/api-docs.yaml","/ws/**", "/ws-sockjs/**"
     };
 
     @Autowired
@@ -54,9 +54,12 @@ public class SecurityConfig {
     public CorsFilter corsFilter(){
         CorsConfiguration corsConfiguration = new CorsConfiguration();
 
-        corsConfiguration.addAllowedOrigin("*");
+        // Thay vì addAllowedOrigin("*"), dùng Pattern này để vừa bảo mật vừa hỗ trợ WebSocket/SockJS
+        corsConfiguration.addAllowedOriginPattern("*");
         corsConfiguration.addAllowedMethod("*");
         corsConfiguration.addAllowedHeader("*");
+        // Cho phép gửi kèm thông tin cookie/session/credentials nếu SockJS yêu cầu
+        corsConfiguration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource urlBasedCorsConfigurationSource = new UrlBasedCorsConfigurationSource();
         urlBasedCorsConfigurationSource.registerCorsConfiguration("/**", corsConfiguration);

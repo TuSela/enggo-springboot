@@ -3,7 +3,7 @@ package com.nhom12.enggo_backend.controller.gamification;
 import com.nhom12.enggo_backend.dto.request.ApiResponse;
 import com.nhom12.enggo_backend.dto.request.gamification.MissionBadgeRequest;
 import com.nhom12.enggo_backend.dto.response.gamification.MissionBadgeResponse;
-import com.nhom12.enggo_backend.service.gamification.GamificationService;
+import com.nhom12.enggo_backend.service.gamification.MissionBadgeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,21 +13,21 @@ import java.util.List;
 @RequestMapping("/gamification/mission-badges")
 @RequiredArgsConstructor
 public class MissionBadgeController {
-    private final GamificationService gamificationService;
+    private final MissionBadgeService missionBadgeService;
 
     @GetMapping
     ApiResponse<List<MissionBadgeResponse>> getMissionBadges() {
-        return ApiResponse.<List<MissionBadgeResponse>>builder().result(gamificationService.getMissionBadges()).build();
+        return ApiResponse.<List<MissionBadgeResponse>>builder().result(missionBadgeService.getMissionBadges()).build();
     }
 
     @GetMapping("/{missionId}/{badgeId}")
     ApiResponse<MissionBadgeResponse> getMissionBadge(@PathVariable Integer missionId, @PathVariable Integer badgeId) {
-        return ApiResponse.<MissionBadgeResponse>builder().result(gamificationService.getMissionBadge(missionId, badgeId)).build();
+        return ApiResponse.<MissionBadgeResponse>builder().result(missionBadgeService.getMissionBadge(missionId, badgeId)).build();
     }
 
     @PostMapping
     ApiResponse<MissionBadgeResponse> createMissionBadge(@RequestBody MissionBadgeRequest request) {
-        return ApiResponse.<MissionBadgeResponse>builder().result(gamificationService.createMissionBadge(request)).build();
+        return ApiResponse.<MissionBadgeResponse>builder().result(missionBadgeService.createMissionBadge(request)).build();
     }
 
     @PutMapping("/{missionId}/{badgeId}")
@@ -37,13 +37,13 @@ public class MissionBadgeController {
             @RequestBody MissionBadgeRequest request
     ) {
         return ApiResponse.<MissionBadgeResponse>builder()
-                .result(gamificationService.updateMissionBadge(missionId, badgeId, request))
+                .result(missionBadgeService.updateMissionBadge(missionId, badgeId, request))
                 .build();
     }
 
     @DeleteMapping("/{missionId}/{badgeId}")
     ApiResponse<String> deleteMissionBadge(@PathVariable Integer missionId, @PathVariable Integer badgeId) {
-        gamificationService.deleteMissionBadge(missionId, badgeId);
+        missionBadgeService.deleteMissionBadge(missionId, badgeId);
         return ApiResponse.<String>builder().result("Mission badge has been deleted").build();
     }
 }
