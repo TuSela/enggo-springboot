@@ -25,19 +25,8 @@ public class PvpMatchController {
         return ApiResponse.<PvpMatchResponse>builder().result(pvpMatchService.getPvpMatch(id)).build();
     }
 
-    @PostMapping
-    ApiResponse<PvpMatchResponse> createPvpMatch(@RequestBody PvpMatchRequest request) {
-        return ApiResponse.<PvpMatchResponse>builder().result(pvpMatchService.createPvpMatch(request)).build();
-    }
-
     @PutMapping("/{id}")
     ApiResponse<PvpMatchResponse> updatePvpMatch(@PathVariable Integer id, @RequestBody PvpMatchRequest request) {
         return ApiResponse.<PvpMatchResponse>builder().result(pvpMatchService.updatePvpMatch(id, request)).build();
-    }
-
-    @DeleteMapping("/{id}")
-    ApiResponse<String> deletePvpMatch(@PathVariable Integer id) {
-        pvpMatchService.deletePvpMatch(id);
-        return ApiResponse.<String>builder().result("Pvp match has been deleted").build();
     }
 }

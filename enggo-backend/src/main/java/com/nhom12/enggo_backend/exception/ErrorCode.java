@@ -25,7 +25,7 @@ public enum ErrorCode {
     FILE_EMPTY(1004, "Please select a file to upload", HttpStatus.BAD_REQUEST),
     UPLOAD_FAILED(1005, "Cloudinary upload failed", HttpStatus.INTERNAL_SERVER_ERROR),
     FRIEND_REQUEST_EXISTED(1011, "Lời mời kết bạn đã được gửi trước đó", HttpStatus.BAD_REQUEST),
-FRIEND_REQUEST_NOT_FOUND(1012, "Không tìm thấy lời mời kết bạn hợp lệ", HttpStatus.NOT_FOUND),
+    FRIEND_REQUEST_NOT_FOUND(1012, "Không tìm thấy lời mời kết bạn hợp lệ", HttpStatus.NOT_FOUND),
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

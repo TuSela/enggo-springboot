@@ -12,10 +12,12 @@ import com.nhom12.enggo_backend.repository.UserRepository;
 import com.nhom12.enggo_backend.repository.gamification.BadgeRepository;
 import com.nhom12.enggo_backend.repository.gamification.UserBadgeRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +26,14 @@ public class UserBadgeService {
     private final UserBadgeRepository userBadgeRepository;
     private final UserRepository userRepository;
     private final BadgeRepository badgeRepository;
+
+    @Transactional(readOnly = true)
+    public List<UserBadgeResponse> getMyBadges() {
+        String username = Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getName();
+        return userBadgeRepository.findAllByUser_Username(username).stream()
+                .map(this::toUserBadgeResponse)
+                .toList();
+    }
 
     @Transactional(readOnly = true)
     public List<UserBadgeResponse> getUserBadges() {
@@ -67,6 +77,8 @@ public class UserBadgeService {
                 .username(userBadge.getUser().getUsername())
                 .badgeId(userBadge.getBadge().getId())
                 .badgeName(userBadge.getBadge().getBadgeName())
+                .description(userBadge.getBadge().getDescription())
+                .iconUrl(userBadge.getBadge().getIconUrl())
                 .earnedAt(userBadge.getEarnedAt())
                 .build();
     }

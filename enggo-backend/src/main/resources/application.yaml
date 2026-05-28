@@ -2,7 +2,7 @@ spring:
   application:
     name: enggo-backend
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/tienganh_app}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://13.158.23.199:3306/tienganh_app}
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: ${SPRING_DATASOURCE_USERNAME:root}
     password: ${SPRING_DATASOURCE_PASSWORD:root}

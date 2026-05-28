@@ -19,5 +19,7 @@ public class UserBadgeResponse {
     String username;
     Integer badgeId;
     String badgeName;
+    String description;
+    String iconUrl;
     LocalDateTime earnedAt;
 }

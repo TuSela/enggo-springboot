@@ -1,7 +1,10 @@
 package com.nhom12.enggo_backend.controller.gamification;
 
+import com.nhom12.enggo_backend.dto.request.QuizProgressRequest;
 import com.nhom12.enggo_backend.dto.response.gamification.PvpMatchResponse;
+import com.nhom12.enggo_backend.dto.response.gamification.QuizProgressResponse;
 import com.nhom12.enggo_backend.service.gamification.MatchmakingService;
+import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -20,11 +23,9 @@ public class MatchController {
 
     @MessageMapping("/join-queue")
     public void joinQueue(@Payload Integer userId) {
-        // Service trả về thẳng DTO an toàn
         PvpMatchResponse matchResponse = matchmakingService.findMatch(userId);
 
         if (matchResponse != null) {
-            // Bắn dữ liệu về cho cả 2 người chơi dựa vào ID lấy từ DTO
             messagingTemplate.convertAndSend("/topic/match/" + matchResponse.getPlayer1Id(), matchResponse);
             messagingTemplate.convertAndSend("/topic/match/" + matchResponse.getPlayer2Id(), matchResponse);
         } else {
@@ -37,4 +38,12 @@ public class MatchController {
         matchmakingService.cancelFindMatch(userId);
         messagingTemplate.convertAndSend("/topic/queue-status/" + userId, "CANCELLED");
     }
+    @MessageMapping("/match/{matchId}/submit")
+    public void handleQuizProgress(
+            @DestinationVariable Integer matchId,
+            QuizProgressRequest request) {
+        QuizProgressResponse broadcastData = matchmakingService.playing(request);
+        messagingTemplate.convertAndSend("/topic/match/" + matchId, broadcastData);
+    }
+
 }

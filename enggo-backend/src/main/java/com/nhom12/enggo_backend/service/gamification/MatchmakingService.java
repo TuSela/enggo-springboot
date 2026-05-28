@@ -1,6 +1,8 @@
 package com.nhom12.enggo_backend.service.gamification;
 
+import com.nhom12.enggo_backend.dto.request.QuizProgressRequest;
 import com.nhom12.enggo_backend.dto.response.gamification.PvpMatchResponse;
+import com.nhom12.enggo_backend.dto.response.gamification.QuizProgressResponse;
 import com.nhom12.enggo_backend.entity.exam.Exam;
 import com.nhom12.enggo_backend.entity.gamification.PvpMatch;
 import com.nhom12.enggo_backend.entity.identity.User;
@@ -67,10 +69,9 @@ public class MatchmakingService {
                 .startTime(LocalDateTime.now())
                 .build();
 
-        // Lưu xuống database
+
         PvpMatch savedMatch = pvpMatchRepository.save(newMatch);
 
-        // 🎯 Thực hiện MAP dữ liệu ngay tại tầng Service (nơi còn giữ Session kết nối DB)
         return PvpMatchResponse.builder()
                 .id(savedMatch.getId())
                 .player1Id(savedMatch.getPlayer1().getId())
@@ -86,5 +87,13 @@ public class MatchmakingService {
 
     public void cancelFindMatch(Integer userId) {
         redisTemplate.opsForSet().remove(MATCH_QUEUE_KEY, String.valueOf(userId));
+    }
+
+    public QuizProgressResponse playing(QuizProgressRequest request){
+    QuizProgressResponse broadcastData = QuizProgressResponse.builder()
+            .playerId(request.getPlayerId())
+            .currentQuestionIndex(request.getCurrentQuestionIndex())
+            .build();
+        return broadcastData;
     }
 }

@@ -27,11 +27,6 @@ public class PvpMatchService {
     private final ExamRepository examRepository;
     private final ExamAttemptRepository examAttemptRepository;
 
-
-    //
-
-
-
     @Transactional(readOnly = true)
     public List<PvpMatchResponse> getPvpMatches() {
         return pvpMatchRepository.findAll().stream().map(this::toPvpMatchResponse).toList();
@@ -42,24 +37,11 @@ public class PvpMatchService {
         return toPvpMatchResponse(findPvpMatch(id));
     }
 
-    @Transactional(readOnly = true)
-    
-
-    public PvpMatchResponse createPvpMatch(PvpMatchRequest request) {
-        PvpMatch pvpMatch = new PvpMatch();
-        applyPvpMatchRequest(pvpMatch, request);
-        return toPvpMatchResponse(pvpMatchRepository.save(pvpMatch));
-    }
 
     public PvpMatchResponse updatePvpMatch(Integer id, PvpMatchRequest request) {
         PvpMatch pvpMatch = findPvpMatch(id);
         applyPvpMatchRequest(pvpMatch, request);
         return toPvpMatchResponse(pvpMatchRepository.save(pvpMatch));
-    }
-
-
-    public void deletePvpMatch(Integer id) {
-        pvpMatchRepository.delete(findPvpMatch(id));
     }
 
     private void applyPvpMatchRequest(PvpMatch pvpMatch, PvpMatchRequest request) {

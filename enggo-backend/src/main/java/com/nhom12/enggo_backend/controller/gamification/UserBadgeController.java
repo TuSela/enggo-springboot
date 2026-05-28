@@ -15,6 +15,11 @@ import java.util.List;
 public class UserBadgeController {
     private final UserBadgeService userBadgeService;
 
+    @GetMapping("/my-badges")
+    ApiResponse<List<UserBadgeResponse>> getMyBadges() {
+        return ApiResponse.<List<UserBadgeResponse>>builder().result(userBadgeService.getMyBadges()).build();
+    }
+
     @GetMapping
     ApiResponse<List<UserBadgeResponse>> getUserBadges() {
         return ApiResponse.<List<UserBadgeResponse>>builder().result(userBadgeService.getUserBadges()).build();

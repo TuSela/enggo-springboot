@@ -49,7 +49,6 @@ public class UploadsService {
         );
 
         Map uploadResult = cloudinary.uploader().upload(file.getBytes(), params);
-
         return uploadResult.get("url").toString();
     }
 }
