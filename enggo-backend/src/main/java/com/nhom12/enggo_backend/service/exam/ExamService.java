@@ -171,6 +171,6 @@ public class ExamService {
                 .build();
         examAttemptRepository.save(attempt);
 
-        return examMapper.toExamDisplayResponse(exam);
+        return examMapper.toExamDisplayResponse(exam,attempt);
     }
 }

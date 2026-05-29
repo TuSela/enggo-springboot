@@ -8,7 +8,8 @@ import java.util.List;
 
 @Data
 public class ExamDisplayResponse {
-    Integer id;
+    Integer examId;
+    Integer attemptId;
     String title;
     String examType;
     Byte difficulty;

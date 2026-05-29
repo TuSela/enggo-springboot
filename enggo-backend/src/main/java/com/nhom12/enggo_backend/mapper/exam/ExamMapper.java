@@ -53,8 +53,10 @@ public interface ExamMapper {
 
     List<ExamResponse> toExamResponses(List<Exam> exams);
 
-    @Mapping(target = "questions", source = "examQuestions")
-    ExamDisplayResponse toExamDisplayResponse(Exam exam);
+    @Mapping(target = "questions", source = "exam.examQuestions")
+    @Mapping(target = "examId", source = "exam.id")
+    @Mapping(target = "attemptId", source = "examAttempt.id")
+    ExamDisplayResponse toExamDisplayResponse(Exam exam,ExamAttempt examAttempt);
 
     @Mapping(target = "orderPriority", source = "orderPriority")
     @Mapping(target = "question", source = "question")

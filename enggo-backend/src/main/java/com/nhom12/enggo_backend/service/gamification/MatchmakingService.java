@@ -65,7 +65,7 @@ public class MatchmakingService {
                 .player1(player1)
                 .player2(player2)
                 .exam(randomExam)
-                .status("PLAYING")
+                .status(String.valueOf(MatchStatus.PLAYING))
                 .startTime(LocalDateTime.now())
                 .build();
 

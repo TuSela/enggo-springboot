@@ -38,12 +38,19 @@ public class MatchController {
         matchmakingService.cancelFindMatch(userId);
         messagingTemplate.convertAndSend("/topic/queue-status/" + userId, "CANCELLED");
     }
-    @MessageMapping("/match/{matchId}/submit")
+
+    @MessageMapping("/match/{matchId}/progress")
     public void handleQuizProgress(
             @DestinationVariable Integer matchId,
             QuizProgressRequest request) {
         QuizProgressResponse broadcastData = matchmakingService.playing(request);
-        messagingTemplate.convertAndSend("/topic/match/" + matchId, broadcastData);
+        messagingTemplate.convertAndSend("/topic/match/" + matchId + "/progress", broadcastData);
     }
-
+    @MessageMapping("/match/{matchId}/submit")
+    public void handleQuizSubmit(
+            @DestinationVariable Integer matchId,
+            QuizProgressRequest request) {
+        QuizProgressResponse broadcastData = matchmakingService.playing(request);
+        messagingTemplate.convertAndSend("/topic/match/" + matchId + "/progress", broadcastData);
+    }
 }
