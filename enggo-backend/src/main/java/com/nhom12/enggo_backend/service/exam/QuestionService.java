@@ -21,10 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -159,9 +156,13 @@ public class QuestionService {
 
         if (ids.isEmpty()) return PageResponse.of(new PageImpl<>(Collections.emptyList(), pageable, 0));
 
-        List<Question> content = questionRepository.findByIds(ids.getContent());
+        List<Integer> sortedIds = ids.getContent();
+        List<Question> content = questionRepository.findByIds(sortedIds);
+        List<Question> strictSortedContent = content.stream()
+                .sorted(Comparator.comparing(question -> sortedIds.indexOf(question.getId())))
+                .toList();
 
-        List<QuestionResponse> responses = questionMapper.toQuestionResponses(content);
+        List<QuestionResponse> responses = questionMapper.toQuestionResponses(strictSortedContent);
 
         Page<QuestionResponse> responsePage = new PageImpl<>(responses, pageable, ids.getTotalElements());
 
