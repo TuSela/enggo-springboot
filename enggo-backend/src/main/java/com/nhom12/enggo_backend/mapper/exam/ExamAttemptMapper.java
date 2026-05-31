@@ -2,15 +2,14 @@ package com.nhom12.enggo_backend.mapper.exam;
 
 import com.nhom12.enggo_backend.dto.request.exam.ExamAnswerRequest;
 import com.nhom12.enggo_backend.dto.request.exam.ExamSubmitRequest;
-import com.nhom12.enggo_backend.dto.response.exam.ExamDetailResponse;
-import com.nhom12.enggo_backend.dto.response.exam.ExamSubmitResponse;
-import com.nhom12.enggo_backend.entity.exam.ExamAttempt;
-import com.nhom12.enggo_backend.entity.exam.ExamAttemptDetail;
-import com.nhom12.enggo_backend.entity.exam.Question;
-import com.nhom12.enggo_backend.entity.exam.QuestionOption;
+import com.nhom12.enggo_backend.dto.request.exam.FillBlankSubmitRequest;
+import com.nhom12.enggo_backend.dto.response.exam.*;
+import com.nhom12.enggo_backend.entity.exam.*;
 import com.nhom12.enggo_backend.service.exam.ScoreCheck;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+
+import java.util.List;
 
 @Mapper(componentModel = "spring")
 public interface ExamAttemptMapper {
@@ -32,4 +31,18 @@ public interface ExamAttemptMapper {
     @Mapping(target = "examId", source = "exam.id")
     @Mapping(target = "totalQuestions", source = "exam.totalQuestions")
     ExamSubmitResponse toExamSubmitResponse(ExamAttempt examAttempt);
+
+    List<ExamSubmitResponse> toExamSubmitResponses(List<ExamAttempt> examAttempts);
+
+    default MultipleOptionResultResponse toMultipleOptionResultResponse (ExamAttemptDetail detail, QuestionOption option) {
+        Integer selectedId = detail.getSelectedOption() != null ? detail.getSelectedOption().getId() : null;
+
+        MultipleOptionResultResponse response = new MultipleOptionResultResponse();
+        response.setId(option.getId());
+        response.setOptionText(option.getOptionText());
+        response.setCorrect(option.isCorrect());
+        response.setSelected(option.getId().equals(selectedId));
+
+        return response;
+    };
 }
