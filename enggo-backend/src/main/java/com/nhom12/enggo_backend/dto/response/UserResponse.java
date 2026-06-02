@@ -5,6 +5,8 @@ import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDateTime;
 import java.util.Set;
+import java.util.List; 
+import com.nhom12.enggo_backend.dto.response.gamification.BadgeResponse; 
 
 @Data
 @NoArgsConstructor
@@ -25,4 +27,5 @@ public class UserResponse {
     String bio;
     LocalDateTime createdAt;
     Set<RoleResponse> roles;
+    List<BadgeResponse> badges;
 }

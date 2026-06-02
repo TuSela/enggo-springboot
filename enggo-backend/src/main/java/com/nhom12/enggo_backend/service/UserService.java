@@ -5,13 +5,16 @@ import com.nhom12.enggo_backend.dto.request.UserCreationRequest;
 import com.nhom12.enggo_backend.dto.request.UserUpdateRequest;
 import com.nhom12.enggo_backend.dto.response.UserMinimalResponse;
 import com.nhom12.enggo_backend.dto.response.UserResponse;
+import com.nhom12.enggo_backend.dto.response.gamification.BadgeResponse; // Import BadgeResponse
 import com.nhom12.enggo_backend.entity.identity.auth.Role;
 import com.nhom12.enggo_backend.entity.identity.User;
+import com.nhom12.enggo_backend.entity.gamification.Badge; // Import Badge
 import com.nhom12.enggo_backend.exception.AppException;
 import com.nhom12.enggo_backend.exception.ErrorCode;
 import com.nhom12.enggo_backend.mapper.UserMapper;
 import com.nhom12.enggo_backend.repository.RoleRepository;
 import com.nhom12.enggo_backend.repository.UserRepository;
+import com.nhom12.enggo_backend.repository.gamification.UserBadgeRepository; // Import UserBadgeRepository
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -37,6 +40,9 @@ public class UserService {
     RoleRepository roleRepository;
     UserMapper userMapper;
     PasswordEncoder passwordEncoder;
+    
+    // Inject Repository của bạn vào đây
+    UserBadgeRepository userBadgeRepository;
 
     public UserResponse createUser(UserCreationRequest request) {
         User user = userMapper.toUser(request);
@@ -58,11 +64,36 @@ public class UserService {
 
     public UserResponse getMyInfo() {
         var context = SecurityContextHolder.getContext();
-        String name = context.getAuthentication().getName();
+        String name = context.getAuthentication().getName(); // Đây là username của user đang login
 
-        User user = userRepository.findByUsername(name).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        User user = userRepository.findByUsername(name)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
-        return userMapper.toUserResponse(user);
+        // 1. Map thông tin user cơ bản sang UserResponse qua MapStruct
+        UserResponse userResponse = userMapper.toUserResponse(user);
+
+        // 2. Sử dụng hàm có sẵn của bạn: Tìm danh sách huy hiệu thẳng bằng username (name)
+        var userBadges = userBadgeRepository.findAllByUser_Username(name);
+
+        // 3. Map thủ công sang BadgeResponse và set vào userResponse
+        if (userBadges != null) {
+            List<BadgeResponse> badgeResponses = userBadges.stream()
+                    .map(userBadge -> {
+                        Badge badge = userBadge.getBadge();
+                        return BadgeResponse.builder()
+                                .id(badge.getId())
+                                .badgeName(badge.getBadgeName())
+                                .description(badge.getDescription())
+                                .iconUrl(badge.getIconUrl())
+                                .createdAt(badge.getCreatedAt())
+                                .build();
+                    })
+                    .toList();
+            
+            userResponse.setBadges(badgeResponses);
+        }
+
+        return userResponse;
     }
 
     public List<UserMinimalResponse> searchUsersByUsername(String username) {
@@ -111,6 +142,7 @@ public class UserService {
         return userMapper.toUserResponse(
                 userRepository.findById(id).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED)));
     }
+    
     public boolean updateAvatar (String url){
         var context = SecurityContextHolder.getContext();
         String name = context.getAuthentication().getName();
