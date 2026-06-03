@@ -17,4 +17,5 @@ public class UserUpdateRequest {
     String bio;
     String status;
     List<String> roles;
+    Integer rankPoint;
 }

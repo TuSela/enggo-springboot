@@ -67,6 +67,10 @@ public class User {
     @Column(columnDefinition = "text")
     String bio;
 
+@Column(name = "rank_point", nullable = false)
+    @Builder.Default
+    Integer rankPoint = 0;
+
     @Column(name = "created_at", insertable = false, updatable = false)
     LocalDateTime createdAt;
 

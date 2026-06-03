@@ -25,4 +25,5 @@ public class UserResponse {
     String bio;
     LocalDateTime createdAt;
     Set<RoleResponse> roles;
+    Integer rankPoint ;
 }

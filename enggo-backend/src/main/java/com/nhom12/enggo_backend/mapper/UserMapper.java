@@ -23,6 +23,7 @@ public interface UserMapper {
     @Mapping(target = "bio", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "roles", ignore = true)
+    @Mapping(target = "rankPoint", constant = "0")
     User toUser(UserCreationRequest request);
 
     UserResponse toUserResponse(User user);
@@ -38,5 +39,6 @@ public interface UserMapper {
     @Mapping(target = "pvpWins", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "roles", ignore = true)
+    @Mapping(target = "rankPoint", ignore = true)
     void updateUser(@MappingTarget User user, UserUpdateRequest request);
 }
