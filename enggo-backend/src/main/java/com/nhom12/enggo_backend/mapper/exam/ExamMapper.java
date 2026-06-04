@@ -2,6 +2,7 @@ package com.nhom12.enggo_backend.mapper.exam;
 
 import com.nhom12.enggo_backend.dto.response.UserMinimalResponse;
 import com.nhom12.enggo_backend.dto.response.exam.*;
+import com.nhom12.enggo_backend.dto.response.gamification.ExamPvpDisplayResponse;
 import com.nhom12.enggo_backend.entity.exam.*;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -57,6 +58,12 @@ public interface ExamMapper {
     @Mapping(target = "examId", source = "exam.id")
     @Mapping(target = "attemptId", source = "examAttempt.id")
     ExamDisplayResponse toExamDisplayResponse(Exam exam,ExamAttempt examAttempt);
+
+    @Mapping(target = "questions", source = "exam.examQuestions")
+    @Mapping(target = "examId", source = "exam.id")
+    @Mapping(target = "attemptId1", source = "examAttempt.id")
+    @Mapping(target = "attemptId2", source = "examAttempt2.id")
+    ExamPvpDisplayResponse toExamPvpDisplayResponse(Exam exam, ExamAttempt examAttempt,ExamAttempt examAttempt2);
 
     @Mapping(target = "orderPriority", source = "orderPriority")
     @Mapping(target = "question", source = "question")

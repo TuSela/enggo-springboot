@@ -28,28 +28,23 @@ public class MissionProgressService {
     public List<MissionProgressResponse> getMissionProgresses() {
         return missionProgressRepository.findAll().stream().map(this::toMissionProgressResponse).toList();
     }
-
     @Transactional(readOnly = true)
     public MissionProgressResponse getMissionProgress(Integer id) {
         return toMissionProgressResponse(findMissionProgress(id));
     }
-
     public MissionProgressResponse createMissionProgress(MissionProgressRequest request) {
         MissionProgress progress = new MissionProgress();
         applyMissionProgressRequest(progress, request);
         return toMissionProgressResponse(missionProgressRepository.save(progress));
     }
-
     public MissionProgressResponse updateMissionProgress(Integer id, MissionProgressRequest request) {
         MissionProgress progress = findMissionProgress(id);
         applyMissionProgressRequest(progress, request);
         return toMissionProgressResponse(missionProgressRepository.save(progress));
     }
-
     public void deleteMissionProgress(Integer id) {
         missionProgressRepository.delete(findMissionProgress(id));
     }
-
     private void applyMissionProgressRequest(MissionProgress progress, MissionProgressRequest request) {
         progress.setUser(findUser(request.getUserId()));
         progress.setMission(findMission(request.getMissionId()));
@@ -57,7 +52,6 @@ public class MissionProgressService {
         progress.setStatus(request.getStatus());
         progress.setDeadline(request.getDeadline());
     }
-
     private MissionProgressResponse toMissionProgressResponse(MissionProgress progress) {
         return MissionProgressResponse.builder()
                 .id(progress.getId())

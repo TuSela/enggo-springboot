@@ -113,7 +113,6 @@ public class ExamService {
         response.setQuestions(questionResponses);
         return response;
     }
-
     public PageResponse<ExamResponse> getAllExams(
             int page,
             int size,
@@ -162,7 +161,6 @@ public class ExamService {
         if (hasOngoing) {
             throw new IllegalStateException("You have an ongoing attempt");
         }
-
         ExamAttempt attempt = ExamAttempt.builder()
                 .user(user)
                 .exam(exam)
@@ -170,7 +168,6 @@ public class ExamService {
                 .startedAt(LocalDateTime.now())
                 .build();
         examAttemptRepository.save(attempt);
-
         return examMapper.toExamDisplayResponse(exam,attempt);
     }
 }

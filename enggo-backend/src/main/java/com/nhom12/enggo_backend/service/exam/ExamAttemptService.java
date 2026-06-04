@@ -76,7 +76,6 @@ public class ExamAttemptService {
         }
 
         totalScore = totalScore.setScale(2, RoundingMode.HALF_UP);
-
         attempt.setCorrectAnswersCount(correctCount);
         attempt.setCompletedAt(LocalDateTime.now());
         attempt.setTotalScore(totalScore);
@@ -93,11 +92,9 @@ public class ExamAttemptService {
         if (attempt.getUser() != null && !attempt.getUser().equals(user)) {
             throw new RuntimeException("Not your attempt");
         }
-
         if (attempt.getExam() != null && !attempt.getExam().equals(exam)) {
             throw new RuntimeException("Attempt does not belong to this exam");
         }
-
         if (attempt.getComplete()) {
             throw new RuntimeException("Attempt is already completed");
         }
@@ -116,7 +113,7 @@ public class ExamAttemptService {
         return isCorrect ? ScoreCheck.correct() : ScoreCheck.notCorrect();
     }
 
-    private ScoreCheck scoreCheck(Question question, ExamAnswerRequest answer) {
+    public ScoreCheck scoreCheck(Question question, ExamAnswerRequest answer) {
         return switch (question.getQuestionType()) {
             case "MULTIPLE_CHOICE" ->  scoreMultipleChoice(question, answer);
             case "FILL_BLANK" ->   scoreFillBlank(question, answer);
@@ -124,7 +121,6 @@ public class ExamAttemptService {
             default -> ScoreCheck.notCorrect();
         };
     }
-
     private ScoreCheck scoreFillBlank (Question question, ExamAnswerRequest answer) {
         if (answer.getFillBlanks() == null || answer.getFillBlanks().isEmpty()) return ScoreCheck.notCorrect();
 
@@ -136,7 +132,6 @@ public class ExamAttemptService {
                         QuestionOption::getId,
                         o -> o
                 ));
-
         boolean isCorrect = answer.getFillBlanks().stream()
                 .allMatch(b -> {
                     QuestionOption correctOption = correctMap.get(b.getBlankId());
@@ -153,10 +148,8 @@ public class ExamAttemptService {
 
         return isCorrect ? ScoreCheck.correct() : ScoreCheck.notCorrect();
     }
-
     private ScoreCheck scoreMatching (Question question, ExamAnswerRequest answer) {
         if (answer.getMatchings() == null || answer.getMatchings().isEmpty()) return ScoreCheck.notCorrect();
-
         //map id va matchKey
         Map<Integer, String> correctMap = question.getOptions().stream()
                 .filter(o -> o.getOption_group() != null && o.getMatch_key() != null)
@@ -164,7 +157,6 @@ public class ExamAttemptService {
                         QuestionOption::getId,
                         QuestionOption::getMatch_key
                 ));
-
         //lay leftKey va rightKey theo id va kiem tra co giong nhau ko
         boolean isCorrect = answer.getMatchings().stream()
                 .allMatch(m -> {
@@ -173,10 +165,8 @@ public class ExamAttemptService {
                     if (leftKey == null || rightKey == null) return false;
                     return leftKey.equalsIgnoreCase(rightKey);
                 });
-
         return isCorrect ? ScoreCheck.correct() : ScoreCheck.notCorrect();
     }
-
     public ExamAttemptDetail saveDetail(ExamAttempt attempt, Question question, ExamAnswerRequest answer, ScoreCheck result) {
         String userInput = null;
 

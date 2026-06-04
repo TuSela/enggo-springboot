@@ -1,6 +1,7 @@
 package com.nhom12.enggo_backend.service.gamification;
 
 import com.nhom12.enggo_backend.dto.request.gamification.PvpMatchRequest;
+import com.nhom12.enggo_backend.dto.response.exam.ExamDisplayResponse;
 import com.nhom12.enggo_backend.dto.response.gamification.PvpMatchResponse;
 import com.nhom12.enggo_backend.entity.exam.Exam;
 import com.nhom12.enggo_backend.entity.exam.ExamAttempt;
@@ -8,15 +9,20 @@ import com.nhom12.enggo_backend.entity.gamification.PvpMatch;
 import com.nhom12.enggo_backend.entity.identity.User;
 import com.nhom12.enggo_backend.exception.AppException;
 import com.nhom12.enggo_backend.exception.ErrorCode;
+import com.nhom12.enggo_backend.mapper.exam.ExamMapper;
 import com.nhom12.enggo_backend.repository.UserRepository;
 import com.nhom12.enggo_backend.repository.exam.ExamAttemptRepository;
 import com.nhom12.enggo_backend.repository.exam.ExamRepository;
 import com.nhom12.enggo_backend.repository.gamification.PvpMatchRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +32,8 @@ public class PvpMatchService {
     private final UserRepository userRepository;
     private final ExamRepository examRepository;
     private final ExamAttemptRepository examAttemptRepository;
+    @Autowired
+    private ExamMapper examMapper;
 
     @Transactional(readOnly = true)
     public List<PvpMatchResponse> getPvpMatches() {
@@ -102,5 +110,29 @@ public class PvpMatchService {
     private ExamAttempt findExamAttemptOrNull(Integer id) {
         return id == null ? null : examAttemptRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND));
+    }
+    public ExamDisplayResponse startPvP (Integer examId) {
+        String username = Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getName();
+        User user = userRepository.findByUsername(username).orElseThrow(RuntimeException::new);
+
+        var exam = examRepository.findById(examId).orElseThrow(RuntimeException::new);
+
+        if (!exam.getActive()) {
+            throw new IllegalStateException("Exam has been stopped");
+        }
+
+        boolean hasOngoing = examAttemptRepository.existsByUserIdAndCompleteFalse(user.getId());
+
+        if (hasOngoing) {
+            throw new IllegalStateException("You have an ongoing attempt");
+        }
+        ExamAttempt attempt = ExamAttempt.builder()
+                .user(user)
+                .exam(exam)
+                .complete(false)
+                .startedAt(LocalDateTime.now())
+                .build();
+        examAttemptRepository.save(attempt);
+        return examMapper.toExamDisplayResponse(exam,attempt);
     }
 }
