@@ -51,4 +51,21 @@ public interface QuestionRepository extends JpaRepository<Question, Integer> {
         WHERE q.id = :id
     """)
     Optional<Question> findByIdWithTags(@Param("id") Integer id);
+
+    @Query("""
+            SELECT DISTINCT q FROM Question q
+            JOIN q.tags t
+            WHERE t.theme.id IN :themeIds
+            AND q.questionType IN :questionTypes
+            
+            AND q.id NOT IN (
+                SELECT q2.id FROM Question q2
+                JOIN q2.tags t2
+                WHERE t2.theme.id NOT IN :themeIds
+            )
+            """)
+    List<Question> findQuestionsByThemesAndTypes(
+            @Param("themeIds") List<Integer> themeIds,
+            @Param("questionTypes") List<String> questionTypes
+    );
 }
