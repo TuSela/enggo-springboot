@@ -154,7 +154,7 @@ public class ExamGenerationService {
 
         // BƯỚC 1: Tìm các đề thi có sẵn (Cố định hoặc đã lưu trước đó) khớp số câu và Theme
         // Vì request có List<Integer> themeIds, ta tìm các đề chứa ít nhất 1 trong các theme được chọn
-        List<Exam> availableExams = examRepository.findAvailableExamsByThemesAndSize(
+        List<Exam> availableExams = examRepository.findAvailableExamsByThemesAndType(
                 request.getThemeIds(), totalQuestions, request.getQuestionTypes()
         );
 
