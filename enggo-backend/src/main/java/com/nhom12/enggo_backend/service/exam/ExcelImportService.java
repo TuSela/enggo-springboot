@@ -19,6 +19,8 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.print.DocFlavor;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -55,6 +57,17 @@ public class ExcelImportService {
         return examMap.values().stream().findFirst().orElse(null);
     }
 
+    public List<Question> importQuestions (MultipartFile file) throws IOException {
+        Workbook workbook = new XSSFWorkbook(file.getInputStream());
+        Map<String, Question> questionMap = importQuestions(workbook.getSheet("question"));
+        importOptions(workbook.getSheet("options"), questionMap);
+        importQuestionTags(workbook.getSheet("question_tags"), questionMap);
+
+        List<Question> questions = new ArrayList<>(questionMap.values());
+
+        return questionRepository.saveAll(questions);
+    }
+
     private Map<String, Exam> importExams (Sheet sheet) {
         String username = Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getName();
         User user = userRepository.findByUsername(username).orElseThrow(RuntimeException::new);
@@ -75,6 +88,7 @@ public class ExcelImportService {
                     .totalQuestions((int) row.getCell(5).getNumericCellValue())
                     .active(row.getCell(6).getBooleanCellValue())
                     .createdBy(user)
+                    .expPerCorrectAnswer((int) row.getCell(7).getNumericCellValue())
                     .build();
 
             examRepository.save(exam);
@@ -129,10 +143,18 @@ public class ExcelImportService {
             Question question = questionMap.get(questionId);
             if (question == null) continue;
 
+            boolean isCorrect = false;
+            Cell correctCell = row.getCell(2);
+            if (correctCell != null) {
+                String cellValue = getCellString(row, 2);
+                assert cellValue != null;
+                isCorrect = "TRUE".equalsIgnoreCase(cellValue.trim());
+            }
+
             QuestionOption questionOption = QuestionOption.builder()
                     .question(question)
                     .optionText(getCellString(row, 1))
-                    .correct(row.getCell(2).getBooleanCellValue())
+                    .correct(isCorrect)
                     .option_group(getCellString(row, 3))
                     .match_key(getCellString(row, 4))
                     .build();
