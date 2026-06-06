@@ -53,6 +53,9 @@ public class Exam {
     @JoinColumn(name = "created_by", nullable = false)
     User createdBy;
 
+    @Column(name = "exp_per_correct_answer", nullable = false)
+    Integer expPerCorrectAnswer;
+
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
