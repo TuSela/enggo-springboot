@@ -1,18 +1,16 @@
 package com.nhom12.enggo_backend.service.gamification;
 
-import com.nhom12.enggo_backend.dto.request.QuizProgressRequest;
 import com.nhom12.enggo_backend.dto.request.exam.ExamAnswerRequest;
 import com.nhom12.enggo_backend.dto.request.exam.ExamSubmitRequest;
-import com.nhom12.enggo_backend.dto.response.exam.ExamDisplayResponse;
 import com.nhom12.enggo_backend.dto.response.gamification.ExamPvpDisplayResponse;
+import com.nhom12.enggo_backend.dto.response.gamification.MatchResultResponse;
 import com.nhom12.enggo_backend.dto.response.gamification.PvpMatchResponse;
 import com.nhom12.enggo_backend.dto.response.gamification.QuizProgressResponse;
 import com.nhom12.enggo_backend.entity.exam.Exam;
 import com.nhom12.enggo_backend.entity.exam.ExamAttempt;
+import com.nhom12.enggo_backend.entity.exam.ExamAttemptDetail;
 import com.nhom12.enggo_backend.entity.gamification.PvpMatch;
 import com.nhom12.enggo_backend.entity.identity.User;
-import com.nhom12.enggo_backend.exception.AppException;
-import com.nhom12.enggo_backend.exception.ErrorCode;
 import com.nhom12.enggo_backend.mapper.exam.ExamMapper;
 import com.nhom12.enggo_backend.repository.exam.ExamAttemptRepository;
 import com.nhom12.enggo_backend.repository.exam.ExamRepository;
@@ -20,17 +18,18 @@ import com.nhom12.enggo_backend.repository.exam.QuestionRepository;
 import com.nhom12.enggo_backend.repository.gamification.PvpMatchRepository;
 import com.nhom12.enggo_backend.repository.UserRepository;
 import com.nhom12.enggo_backend.service.exam.ExamAttemptService;
-import com.nhom12.enggo_backend.service.exam.ExamService;
 import com.nhom12.enggo_backend.service.exam.ScoreCheck;
-import org.hibernate.type.descriptor.java.ObjectJavaType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.security.Principal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class MatchmakingService {
@@ -161,7 +160,7 @@ public class MatchmakingService {
     @Transactional
     // ?? H�m API d�nh ri�ng cho m�n h�nh PvP QuizActivity l?y d?
     public ExamPvpDisplayResponse startPvpExam (Integer matchId, User playerId) {
-        PvpMatch pvpMatch = pvpMatchRepository.findById(matchId).orElseThrow(() ->new RuntimeException("L?I: Kh�ng t�m th?y PVPMatch : "));
+        PvpMatch pvpMatch = pvpMatchRepository.findById(matchId).orElseThrow(() -> new RuntimeException("L?I: Kh�ng t�m th?y PVPMatch : "));
         User player2 = pvpMatch.getPlayer2();
         User player1 = pvpMatch.getPlayer1();
         var exam = examRepository.findById(pvpMatch.getExam().getId()).orElseThrow(() -> new RuntimeException("L?I: Kh�ng t�m th?y b�i thi (Exam) v?i ID: " + pvpMatch.getId()));
@@ -198,10 +197,95 @@ public class MatchmakingService {
         pvpMatch.setPlayer2Attempt(attempt2);
         pvpMatchRepository.save(pvpMatch);
 
-        return examMapper.toExamPvpDisplayResponse(exam,attempt,attempt2);
+        return examMapper.toExamPvpDisplayResponse(exam, attempt, attempt2);
+    }
+    @Transactional
+    public MatchResultResponse submitPvP(Integer matchId, ExamSubmitRequest request, Principal principal) {
+        User user = userRepository.findByUsername(principal.getName()).orElseThrow(() -> new RuntimeException("User Not Found"));
+        PvpMatch pvpMatch = pvpMatchRepository.findById(matchId).orElseThrow(() -> new RuntimeException("Match Not Found"));
+        if (pvpMatch.getPlayer1().getId().equals(user.getId())) {
+
+            int correctCount = 0;
+            BigDecimal pointsPerQuestion = BigDecimal.TEN.divide(BigDecimal.valueOf(pvpMatch.getExam().getTotalQuestions()), 2, BigDecimal.ROUND_HALF_UP);
+            BigDecimal totalScore = BigDecimal.ZERO;
+            List<ExamAttemptDetail> details = new ArrayList<>();
+            for (ExamAnswerRequest answer : request.getExamAnswers()) {
+                var question = questionRepository.findById(answer.getQuestionId()).orElseThrow(() -> new RuntimeException("Question Not Found"));
+
+                ScoreCheck result = examAttemptService.scoreCheck(question, answer);
+                if (result.isCorrect()) {
+                    correctCount++;
+                    totalScore = totalScore.add(pointsPerQuestion);
+                }
+
+                details.add(examAttemptService.saveDetail(pvpMatch.getPlayer1Attempt(), question, answer, result));
+            }
+            totalScore = totalScore.setScale(2, RoundingMode.HALF_UP);
+            pvpMatch.getPlayer1Attempt().setCorrectAnswersCount(correctCount);
+            pvpMatch.getPlayer1Attempt().setCompletedAt(LocalDateTime.now());
+            pvpMatch.getPlayer1Attempt().setTotalScore(totalScore);
+            pvpMatch.getPlayer1Attempt().setComplete(true);
+            examAttemptRepository.save(pvpMatch.getPlayer1Attempt());
+        } else if (pvpMatch.getPlayer2().getId().equals(user.getId())) {
+            int correctCount = 0;
+            BigDecimal pointsPerQuestion = BigDecimal.TEN.divide(BigDecimal.valueOf(pvpMatch.getExam().getTotalQuestions()), 2, BigDecimal.ROUND_HALF_UP);
+            BigDecimal totalScore = BigDecimal.ZERO;
+            List<ExamAttemptDetail> details = new ArrayList<>();
+            for (ExamAnswerRequest answer : request.getExamAnswers()) {
+                var question = questionRepository.findById(answer.getQuestionId()).orElseThrow(() -> new RuntimeException("Question Not Found"));
+
+                ScoreCheck result = examAttemptService.scoreCheck(question, answer);
+                if (result.isCorrect()) {
+                    correctCount++;
+                    totalScore = totalScore.add(pointsPerQuestion);
+                }
+
+                details.add(examAttemptService.saveDetail(pvpMatch.getPlayer2Attempt(), question, answer, result));
+            }
+            totalScore = totalScore.setScale(2, RoundingMode.HALF_UP);
+            pvpMatch.getPlayer2Attempt().setCorrectAnswersCount(correctCount);
+            pvpMatch.getPlayer2Attempt().setCompletedAt(LocalDateTime.now());
+            pvpMatch.getPlayer2Attempt().setTotalScore(totalScore);
+            pvpMatch.getPlayer2Attempt().setComplete(true);
+            examAttemptRepository.save(pvpMatch.getPlayer2Attempt());
+        }
+        pvpMatchRepository.save(pvpMatch);
+        if (pvpMatch.getPlayer1Attempt().getComplete() && pvpMatch.getPlayer2Attempt().getComplete()) {
+            return finalizeMatch(pvpMatch);
+        }
+        return null;
+    }
+    private MatchResultResponse finalizeMatch(PvpMatch match) {
+        match.setStatus(String.valueOf(MatchStatus.FINISHED));
+        match.setEndTime(LocalDateTime.now());
+        int score1 = match.getPlayer1Score();
+        int score2 = match.getPlayer2Score();
+        Integer winnerId = 0;
+        User player1 = match.getPlayer1();
+        User player2 = match.getPlayer2();
+        int eloChange = 25; 
+        if (score1 > score2) {
+            winnerId = player1.getId();
+            match.setWinner(player1);
+            updateElo(player1, player2, eloChange);
+            player1.setPvpWins((player1.getPvpWins() == null ? 0 : player1.getPvpWins()) + 1);
+        } else if (score2 > score1) {
+            winnerId = player2.getId();
+            match.setWinner(player2);
+            updateElo(player2, player1, eloChange); 
+            player2.setPvpWins((player2.getPvpWins() == null ? 0 : player2.getPvpWins()) + 1);
+        } else {
+            updateElo(player1, player2, 0);
+        }
+        userRepository.save(player1); userRepository.save(player2);
+        pvpMatchRepository.save(match);
+        return MatchResultResponse.builder().matchId(match.getId()).winnerId(winnerId).player1Score(score1).player2Score(score2).eloChange(eloChange).status("FINISHED").build();
     }
 
-    public Object submitPvP(ExamSubmitRequest request, Integer matchId){
-
+    private void updateElo(User winner, User loser, int change) {
+        if (winner.getElo() == null) winner.setElo(1000);
+        if (loser.getElo() == null) loser.setElo(1000);
+        winner.setElo(winner.getElo() + change);
+        loser.setElo(Math.max(0, loser.getElo() - change));
     }
 }

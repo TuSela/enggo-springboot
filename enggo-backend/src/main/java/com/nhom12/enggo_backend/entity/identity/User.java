@@ -58,6 +58,9 @@ public class User {
     @Column(name = "pvp_wins")
     Integer pvpWins;
 
+    @Column(name = "elo")
+    Integer elo;
+
     @Column(name = "avatar_url", length = 255)
     String avatarUrl;
 

@@ -1,9 +1,9 @@
 package com.nhom12.enggo_backend.controller.gamification;
 
-import com.nhom12.enggo_backend.dto.request.QuizProgressRequest;
 import com.nhom12.enggo_backend.dto.request.exam.ExamAnswerRequest;
-import com.nhom12.enggo_backend.dto.response.exam.ExamDisplayResponse;
+import com.nhom12.enggo_backend.dto.request.exam.ExamSubmitRequest;
 import com.nhom12.enggo_backend.dto.response.gamification.ExamPvpDisplayResponse;
+import com.nhom12.enggo_backend.dto.response.gamification.MatchResultResponse;
 import com.nhom12.enggo_backend.dto.response.gamification.PvpMatchResponse;
 import com.nhom12.enggo_backend.dto.response.gamification.QuizProgressResponse;
 import com.nhom12.enggo_backend.entity.identity.User;
@@ -116,8 +116,10 @@ public class MatchController {
         messagingTemplate.convertAndSend("/topic/match/" + matchId + "/progress", broadcastData);
     }
     @MessageMapping("/match/{matchId}/submit")
-    public void handleQuizSubmit(@DestinationVariable Integer matchId) {
-        matchmakingService.submitPvP()
-
+    public void handleQuizSubmit(@DestinationVariable Integer matchId, ExamSubmitRequest request, Principal principal) {
+        MatchResultResponse result = matchmakingService.submitPvP(matchId,request,principal);
+        if (result != null) {
+            messagingTemplate.convertAndSend("/topic/match/" + matchId + "/result", result);
+        }
     }
 }
