@@ -43,6 +43,7 @@ public class ExamAttemptService {
         var attempt = examAttemptRepository.findById(attemptId).orElseThrow(() -> new RuntimeException("Exam Attempt Not Found"));
         var exam = examRepository.findById(examId).orElseThrow(() -> new RuntimeException("Exam Not Found"));
 
+
         validateExamAttempt(attempt,  user, exam);
 
         int duration = exam.getDurationMinutes();
