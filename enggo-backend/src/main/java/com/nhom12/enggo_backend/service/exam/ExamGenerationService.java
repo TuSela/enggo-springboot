@@ -52,9 +52,17 @@ public class ExamGenerationService {
 
         //Tinh toan so cau hoi theo do kho
         int total = request.getTotalQuestions();
-        int reqEasy = (int) Math.round(total * 0.5);
-        int reqMedium = (int) Math.round(total * 0.3);
-        int reqHard = total - reqEasy - reqMedium; // Số câu còn lại đắp vào mức Khó để khớp tổng
+        int reqEasy, reqMedium, reqHard;
+
+        if (total <= 5) {
+            reqEasy = (request.getDifficulty() == 1) ? total : 0;
+            reqMedium = (request.getDifficulty() == 2) ? total : 0;
+            reqHard = (request.getDifficulty() == 3) ? total : 0;
+        } else {
+            reqEasy = (int) Math.round(total * 0.5);
+            reqMedium = (int) Math.round(total * 0.3);
+            reqHard = total - reqEasy - reqMedium;
+        }
 
         //Tong hop tat ca thanh 1 danh sach
         List<Question> finalSelected = new ArrayList<>();
@@ -85,23 +93,26 @@ public class ExamGenerationService {
         List<Question> result = new ArrayList<>();
         if (pool.isEmpty() || requiredCount <= 0) return result;
 
-        //Tron cau
+        // 1. Xáo trộn kho câu hỏi gốc
         Collections.shuffle(pool);
 
-        //Trao loai de luon uu tien ca 3 dc
+        // 2. Xáo trộn danh sách Type để thay đổi thứ tự ưu tiên nhặt dạng bài
         List<String> shuffledTypes = new ArrayList<>(allowedTypes);
         Collections.shuffle(shuffledTypes);
 
+        // 3. XÁO TRỘN CẢ THEME: Đây là chìa khóa để Theme 4 và Theme 5 có cơ hội đứng đầu như nhau
+        List<Integer> shuffledThemes = new ArrayList<>(selectedThemeIds);
+        Collections.shuffle(shuffledThemes);
+
         int safetyCheck = 0;
-        // Nhãn (Label) để có thể thoát hoàn toàn khỏi tất cả vòng lặp lồng nhau khi đủ câu
         outerWhile:
-        while (safetyCheck < pool.size() * 2) {
+        while (result.size() < requiredCount && safetyCheck < pool.size() * 2) {
             safetyCheck++;
 
             // Chạy xoay vòng qua từng dạng bài
             for (String type : shuffledTypes) {
                 // Chạy xoay vòng qua từng chủ đề
-                for (Integer themeId : selectedThemeIds) {
+                for (Integer themeId : shuffledThemes) {
 
                     // Lọc câu hỏi khớp đồng thời cả Type, Theme và chưa từng được chọn
                     Optional<Question> matchQuestion = pool.stream()
@@ -114,20 +125,20 @@ public class ExamGenerationService {
                     if (matchQuestion.isPresent()) {
                         result.add(matchQuestion.get());
 
-                        // ĐÃ NHẶT ĐƯỢC 1 CÂU -> Kiểm tra xem đủ tổng số câu chưa
+                        // Kiểm tra nếu đủ tổng số câu yêu cầu cho giỏ này thì dừng hẳn
                         if (result.size() >= requiredCount) {
-                            break outerWhile; // Thoát hẳn toàn bộ các vòng lặp, kết thúc tìm kiếm
+                            break outerWhile;
                         }
 
-                        // CHÌA KHÓA ROUND-ROBIN: Nhặt được 1 câu của Type này rồi thì
-                        // bẻ gãy vòng lặp Theme hiện tại để chuyển sang Type kế tiếp ngay lập tức
+                        // CHÌA KHÓA CÂN BẰNG: Nhặt được 1 câu của cặp (Type, Theme) này rồi,
+                        // lập tức bẻ gãy vòng lặp để chuyển sang Type kế tiếp và Theme kế tiếp ở lượt sau!
                         break;
                     }
                 }
             }
         }
 
-        // Bước đệm cứu hộ (Fallback): Nếu ngặt nghèo quá không đủ câu, hốt nốt giỏ gốc
+        // Bước đệm cứu hộ (Fallback): Nhặt vét nếu kho quá ngặt nghèo không đủ câu theo bộ lọc
         if (result.size() < requiredCount) {
             for (Question q : pool) {
                 if (result.size() >= requiredCount) break;
