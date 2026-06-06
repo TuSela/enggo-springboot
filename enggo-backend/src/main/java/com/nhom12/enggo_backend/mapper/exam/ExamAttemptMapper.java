@@ -30,6 +30,8 @@ public interface ExamAttemptMapper {
     @Mapping(target = "attemptId", source = "id")
     @Mapping(target = "examId", source = "exam.id")
     @Mapping(target = "totalQuestions", source = "exam.totalQuestions")
+    @Mapping(target = "expGained", source = "expGained")
+    @Mapping(target = "bonusExp", source = "bonusExp")
     ExamSubmitResponse toExamSubmitResponse(ExamAttempt examAttempt);
 
     List<ExamSubmitResponse> toExamSubmitResponses(List<ExamAttempt> examAttempts);
