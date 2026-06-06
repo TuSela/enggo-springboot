@@ -1,6 +1,7 @@
 package com.nhom12.enggo_backend.dto.response.exam;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import jakarta.persistence.Column;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -18,5 +19,7 @@ public class ExamSubmitResponse {
     LocalDateTime startedAt;
     LocalDateTime completedAt;
     Long timeTakenSeconds;
+    Integer expGained;
+    Integer bonusExp;
     List<ExamAttemptDetailResponse> detail;
 }
