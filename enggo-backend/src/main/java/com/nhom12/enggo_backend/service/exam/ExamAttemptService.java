@@ -9,11 +9,13 @@ import com.nhom12.enggo_backend.dto.request.exam.FillBlankSubmitRequest;
 import com.nhom12.enggo_backend.dto.request.exam.MatchingSubmitRequest;
 import com.nhom12.enggo_backend.dto.response.PageResponse;
 import com.nhom12.enggo_backend.dto.response.exam.*;
+import com.nhom12.enggo_backend.dto.response.gamification.LevelInfoResponse;
 import com.nhom12.enggo_backend.entity.exam.*;
 import com.nhom12.enggo_backend.entity.identity.User;
 import com.nhom12.enggo_backend.mapper.exam.ExamAttemptMapper;
 import com.nhom12.enggo_backend.repository.UserRepository;
 import com.nhom12.enggo_backend.repository.exam.*;
+import com.nhom12.enggo_backend.service.gamification.LevelService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -37,6 +39,7 @@ public class ExamAttemptService {
     private final ExamAttemptMapper examAttemptMapper;
     private final ObjectMapper objectMapper;
     private final ExamAttemptDetailRepository examAttemptDetailRepository;
+    private final LevelService levelService;
 
     @Transactional
     public ExamSubmitResponse submitExam(ExamSubmitRequest request, Integer examId, Integer attemptId) {
@@ -81,10 +84,31 @@ public class ExamAttemptService {
                     .divide(BigDecimal.valueOf(exam.getTotalQuestions()), RoundingMode.HALF_UP);
         }
 
+        int expPerQuestion = exam.getExpPerCorrectAnswer() != null ? exam.getExpPerCorrectAnswer() : 0;
+        int baseExp = expPerQuestion * correctCount;
+        int bonusExp = 0;
+
+        if (correctCount == exam.getTotalQuestions()) {
+            bonusExp = generatePerfectBonusExp(exam.getDifficulty());
+        }
+
+        int totalExp = baseExp + bonusExp;
+
+        int currentExp = user.getExp() != null ? user.getExp() : 0;
+        int newExp = totalExp + currentExp;
+
+        LevelInfoResponse newLevelInfo = levelService.getLevelInfo(newExp);
+
+        user.setExp(newExp);
+        user.setLevel(newLevelInfo.getCurrentLevel());
+        userRepository.save(user);
+
         attempt.setCorrectAnswersCount(correctCount);
         attempt.setCompletedAt(isTimeOut ? LocalDateTime.now() : LocalDateTime.now().plusMinutes(duration));
         attempt.setTotalScore(totalScore);
         attempt.setComplete(true);
+        attempt.setExpGained(baseExp);
+        attempt.setBonusExp(bonusExp);
         examAttemptRepository.save(attempt);
 
         examAttemptDetailRepository.saveAll(details);
@@ -105,6 +129,30 @@ public class ExamAttemptService {
         if (attempt.getComplete()) {
             throw new RuntimeException("Attempt is already completed");
         }
+    }
+
+    private int generatePerfectBonusExp (Byte difficulty) {
+        int minBonusExp;
+        int maxBonusExp;
+
+        int diff = (difficulty != null) ? difficulty.intValue() : 0;
+
+        maxBonusExp = switch (diff) {
+            case 2 -> {
+                minBonusExp = 25;
+                yield 45;
+            }
+            case 3 -> {
+                minBonusExp = 50;
+                yield 100;
+            }
+            default -> {
+                minBonusExp = 10;
+                yield 20;
+            }
+        };
+
+        return java.util.concurrent.ThreadLocalRandom.current().nextInt(minBonusExp, maxBonusExp + 1);
     }
 
     private ScoreCheck scoreMultipleChoice (Question question, ExamAnswerRequest answer, Exam exam) {
@@ -303,6 +351,8 @@ public class ExamAttemptService {
         response.setCorrectAnswersCount(attempt.getCorrectAnswersCount());
         response.setStartedAt(attempt.getStartedAt());
         response.setCompletedAt(attempt.getCompletedAt());
+        response.setExpGained(attempt.getExpGained());
+        response.setBonusExp(attempt.getBonusExp());
         response.setDetail(detailsResponses);
 
         return response;
