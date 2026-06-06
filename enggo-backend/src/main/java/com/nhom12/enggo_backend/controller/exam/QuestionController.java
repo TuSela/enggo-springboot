@@ -6,10 +6,14 @@ import com.nhom12.enggo_backend.dto.request.exam.QuestionUpdateRequest;
 import com.nhom12.enggo_backend.dto.response.PageResponse;
 import com.nhom12.enggo_backend.dto.response.exam.QuestionResponse;
 import com.nhom12.enggo_backend.dto.response.exam.QuestionDetailResponse;
+import com.nhom12.enggo_backend.entity.exam.Question;
+import com.nhom12.enggo_backend.service.exam.ExcelImportService;
 import com.nhom12.enggo_backend.service.exam.QuestionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -17,6 +21,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class QuestionController {
     private final QuestionService questionService;
+    private final ExcelImportService excelImportService;
 
     @PostMapping
     ApiResponse<QuestionDetailResponse> addQuestion(@RequestBody QuestionCreationRequest request) {
@@ -59,6 +64,13 @@ public class QuestionController {
             @RequestBody QuestionUpdateRequest request) {
         return ApiResponse.<QuestionDetailResponse>builder()
                 .result(questionService.updateQuestion(id, request))
+                .build();
+    }
+
+    @PostMapping("/import")
+    ApiResponse<List<Question>> importQuestion(@RequestParam("file") MultipartFile file) throws IOException {
+        return ApiResponse.<List<Question>>builder()
+                .result(excelImportService.importQuestions(file))
                 .build();
     }
 }
