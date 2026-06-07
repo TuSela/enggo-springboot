@@ -133,7 +133,7 @@ public class MatchmakingService {
             throw new RuntimeException("Question Not Found in Exam");
         }
 
-        ScoreCheck result = examAttemptService.scoreCheck(question, request);
+        ScoreCheck result = examAttemptService.scoreCheck(question, request,pvpMatch.getExam());
 
         int currentScore = 0;
         if (pvpMatch.getPlayer1().getId().equals(user.getId())) {
@@ -212,7 +212,7 @@ public class MatchmakingService {
             for (ExamAnswerRequest answer : request.getExamAnswers()) {
                 var question = questionRepository.findById(answer.getQuestionId()).orElseThrow(() -> new RuntimeException("Question Not Found"));
 
-                ScoreCheck result = examAttemptService.scoreCheck(question, answer);
+                ScoreCheck result = examAttemptService.scoreCheck(question, answer,pvpMatch.getExam());
                 if (result.isCorrect()) {
                     correctCount++;
                     totalScore = totalScore.add(pointsPerQuestion);
@@ -234,7 +234,7 @@ public class MatchmakingService {
             for (ExamAnswerRequest answer : request.getExamAnswers()) {
                 var question = questionRepository.findById(answer.getQuestionId()).orElseThrow(() -> new RuntimeException("Question Not Found"));
 
-                ScoreCheck result = examAttemptService.scoreCheck(question, answer);
+                ScoreCheck result = examAttemptService.scoreCheck(question, answer,pvpMatch.getExam());
                 if (result.isCorrect()) {
                     correctCount++;
                     totalScore = totalScore.add(pointsPerQuestion);

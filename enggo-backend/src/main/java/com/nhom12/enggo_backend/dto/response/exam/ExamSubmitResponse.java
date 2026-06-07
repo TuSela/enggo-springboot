@@ -1,17 +1,15 @@
 package com.nhom12.enggo_backend.dto.response.exam;
 
-import com.nhom12.enggo_backend.entity.exam.Exam;
-import com.nhom12.enggo_backend.entity.identity.User;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.persistence.Column;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class ExamSubmitResponse {
     Integer attemptId;
     Integer examId;
@@ -21,4 +19,7 @@ public class ExamSubmitResponse {
     LocalDateTime startedAt;
     LocalDateTime completedAt;
     Long timeTakenSeconds;
+    Integer expGained;
+    Integer bonusExp;
+    List<ExamAttemptDetailResponse> detail;
 }

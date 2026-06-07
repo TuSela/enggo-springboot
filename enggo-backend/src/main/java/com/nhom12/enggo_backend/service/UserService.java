@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -27,6 +28,7 @@ import org.springframework.util.CollectionUtils;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -118,5 +120,44 @@ public class UserService {
         user.setAvatarUrl(url);
         userRepository.save(user);
         return true;
+    }
+
+    private final RedisTemplate<String, Object> redisTemplate;
+
+    // Tạo một Key chung cho phân vùng chứa danh sách online trong Redis
+    private static final String REDIS_ONLINE_KEY = "enggo:users:online";
+    // Phân vùng phụ để ánh xạ ngược từ sessionId sang userId khi disconnect
+    private static final String REDIS_SESSION_KEY = "enggo:session:";
+
+    // 1. Khi User kết nối thành công (Báo ON)
+    public void userOnline(String userId, String sessionId) {
+        // Lưu vào Hash của Redis: Key là cụm cố định, Field là userId, Value là sessionId
+        redisTemplate.opsForHash().put(REDIS_ONLINE_KEY, userId, sessionId);
+
+        // Lưu thêm 1 cặp String phụ để tí nữa khi ngắt kết nối, từ sessionId tìm ra được userId để xóa
+        // Đặt thời gian tự hủy (TTL) là 1 ngày đề phòng trường hợp treo dữ liệu rác
+        redisTemplate.opsForValue().set(REDIS_SESSION_KEY + sessionId, userId, 1, TimeUnit.DAYS);
+
+        System.out.println("🟢 [REDIS] User [" + userId + "] đã Online với Session: " + sessionId);
+    }
+
+    // 2. Khi User ngắt kết nối (Báo OFF)
+    public void userOffline(String sessionId) {
+        String sessionKey = REDIS_SESSION_KEY + sessionId;
+        // Tìm xem sessionId này là của User nào
+        String userId = (String) redisTemplate.opsForValue().get(sessionKey);
+
+        if (userId != null) {
+            // Xóa User khỏi danh sách Online trong Hash
+            redisTemplate.opsForHash().delete(REDIS_ONLINE_KEY, userId);
+            // Xóa luôn Key phụ
+            redisTemplate.delete(sessionKey);
+            System.out.println("[REDIS] User [" + userId + "] đã ngắt kết nối (Offline).");
+        }
+    }
+
+    // 3. Hàm kiểm tra xem một người dùng bất kỳ có đang Online hay không
+    public boolean isUserOnline(String userId) {
+        return redisTemplate.opsForHash().hasKey(REDIS_ONLINE_KEY, userId);
     }
 }

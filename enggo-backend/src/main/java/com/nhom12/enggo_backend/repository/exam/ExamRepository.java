@@ -67,4 +67,58 @@ public interface ExamRepository extends JpaRepository<Exam,Integer> {
             WHERE e.id IN :id
             """)
     Optional<Exam> findByIdWithTags(@Param("id") List<Integer> ids);
+
+    @Query("""
+            SELECT DISTINCT e FROM Exam e
+            JOIN e.examTags t
+            JOIN e.examQuestions eq
+            WHERE t.theme.id IN :themeIds
+            AND e.totalQuestions = :totalQuestions
+            AND e.active = true
+            
+            AND e.id NOT IN (
+                SELECT eq.exam.id FROM ExamQuestion eq
+                WHERE eq.question.questionType NOT IN :questionTypes
+            )
+            
+            AND e.id NOT IN (
+                SELECT et.exam.id FROM ExamTag et
+                WHERE et.theme.id NOT IN :themeIds
+            )
+            
+            AND e.id NOT IN (
+                SELECT ea.exam.id FROM ExamAttempt ea
+                WHERE ea.user.id = :userId
+            )
+            """)
+    List<Exam> findAvailableExamsByThemesAndType (
+            @Param("themeIds") List<Integer> themeIds,
+            @Param("totalQuestions") int totalQuestions,
+            @Param("questionTypes") List<String> questionTypes,
+            @Param("userId") Integer userId
+    );
+
+    @Query("""
+            SELECT DISTINCT e FROM Exam e
+            JOIN e.examTags t
+            JOIN e.examQuestions eq
+            WHERE t.theme.id IN :themeIds
+            AND e.totalQuestions = :totalQuestions
+            AND e.active = true
+            
+            AND e.id NOT IN (
+                SELECT eq.exam.id FROM ExamQuestion eq
+                WHERE eq.question.questionType NOT IN :questionTypes
+            )
+            
+            AND e.id NOT IN (
+                SELECT et.exam.id FROM ExamTag et
+                WHERE et.theme.id NOT IN :themeIds
+            )
+            """)
+    List<Exam> findAnyAvailableExams (
+            @Param("themeIds") List<Integer> themeIds,
+            @Param("totalQuestions") int totalQuestions,
+            @Param("questionTypes") List<String> questionTypes
+    );
 }

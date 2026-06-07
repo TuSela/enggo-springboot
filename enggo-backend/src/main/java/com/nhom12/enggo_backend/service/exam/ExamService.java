@@ -137,9 +137,13 @@ public class ExamService {
 
         if (ids.isEmpty()) return PageResponse.of(new PageImpl<>(Collections.emptyList(), pageable, 0));
 
-        List<Exam> content = examRepository.findByIds(ids.getContent());
+        List<Integer> sortedIds = ids.getContent();
+        List<Exam> content = examRepository.findByIds(sortedIds);
+        List<Exam> strictSortedContent = content.stream()
+                .sorted(Comparator.comparingInt(exam -> sortedIds.indexOf(exam.getId())))
+                .toList();
 
-        List<ExamResponse> responses = examMapper.toExamResponses(content);
+        List<ExamResponse> responses = examMapper.toExamResponses(strictSortedContent);
 
         Page<ExamResponse> responsePage = new PageImpl<ExamResponse>(responses, pageable, ids.getTotalElements());
 

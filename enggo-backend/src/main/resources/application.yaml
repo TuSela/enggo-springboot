@@ -48,3 +48,36 @@ app:
     allowed-types:
       - image/jpeg
       - image/png
+
+game:
+  levels:
+    - { level: 1,  reqExp: 0 }
+    - { level: 2,  reqExp: 100 }
+    - { level: 3,  reqExp: 250 }
+    - { level: 4,  reqExp: 450 }
+    - { level: 5,  reqExp: 700 }
+    - { level: 6,  reqExp: 1000 }
+    - { level: 7,  reqExp: 1350 }
+    - { level: 8,  reqExp: 1750 }
+    - { level: 9,  reqExp: 2200 }
+    - { level: 10, reqExp: 2700 }
+    - { level: 11, reqExp: 3300 }
+    - { level: 12, reqExp: 4000 }
+    - { level: 13, reqExp: 4800 }
+    - { level: 14, reqExp: 5700 }
+    - { level: 15, reqExp: 6700 }
+    - { level: 16, reqExp: 7900 }
+    - { level: 17, reqExp: 9300 }
+    - { level: 18, reqExp: 10900 }
+    - { level: 19, reqExp: 12700 }
+    - { level: 20, reqExp: 14700 }
+    - { level: 21, reqExp: 17000 }
+    - { level: 22, reqExp: 19600 }
+    - { level: 23, reqExp: 22500 }
+    - { level: 24, reqExp: 25700 }
+    - { level: 25, reqExp: 29300 }
+    - { level: 26, reqExp: 33300 }
+    - { level: 27, reqExp: 37800 }
+    - { level: 28, reqExp: 42800 }
+    - { level: 29, reqExp: 48400 }
+    - { level: 30, reqExp: 55000 }
