@@ -70,7 +70,6 @@ public class ExamController {
                 .result(examService.startExam(id))
                 .build();
     }
-
     @PostMapping("/{examId}/attempt/{attemptId}/submit")
     ApiResponse<ExamSubmitResponse> submitExam (
             @RequestBody ExamSubmitRequest examSubmitRequest,
