@@ -155,89 +155,102 @@ public class ExamGenerationService {
     public ExamResponse getOrGenerateExamResponse(RandomBlueprintRequest request) {
         String userName = Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getName();
         User currentUser = userRepository.findByUsername(userName).orElse(null);
+        Integer userId = currentUser != null ? currentUser.getId() : null;
 
         int totalQuestions = request.getTotalQuestions();
-
-        // Bảo vệ hệ thống nếu frontend truyền sai mốc số lượng câu hỏi quy định
         if (totalQuestions != 5 && totalQuestions != 10 && totalQuestions != 15 && totalQuestions != 20) {
             totalQuestions = 20;
         }
 
-        // BƯỚC 1: Tìm các đề thi có sẵn (Cố định hoặc đã lưu trước đó) khớp số câu và Theme
-        // Vì request có List<Integer> themeIds, ta tìm các đề chứa ít nhất 1 trong các theme được chọn
-        List<Exam> availableExams = examRepository.findAvailableExamsByThemesAndType(
-                request.getThemeIds(), totalQuestions, request.getQuestionTypes()
-        );
+        // =========================================================================
+        // TẦNG 1: LUÔN LUÔN ƯU TIÊN TẠO ĐỀ MỚI TINH TRÊN RAM
+        // =========================================================================
+        try {
+            List<Question> finalSelectedQuestions = generateBalancedQuestions(request);
 
-        if (!availableExams.isEmpty()) {
-            // Nếu tìm thấy, thực hiện bốc ngẫu nhiên duy nhất 1 đề trong danh sách
-            int randomIndex = java.util.concurrent.ThreadLocalRandom.current().nextInt(availableExams.size());
-            Exam selectedExam = availableExams.get(randomIndex);
-            return mapToExamResponse(selectedExam);
-        }
-
-        // BƯỚC 2: KHÔNG CÓ ĐỀ SẴN -> Tự động tạo bộ câu hỏi cân bằng trên RAM
-        List<Question> finalSelectedQuestions = generateBalancedQuestions(request);
-        String examCode = String.valueOf(System.currentTimeMillis() % 1000000);
-
-        // BƯỚC 3: Đóng gói thực thể Exam mới
-        Exam dynamicExam = Exam.builder()
-                .title(String.format("Đề Tự Động %d Câu - Mã %s", totalQuestions, examCode))
-                .examType("DYNAMIC")
-                .difficulty(request.getDifficulty())
-                .totalQuestions(totalQuestions)
-                .durationMinutes(totalQuestions * 2) // Tỷ lệ: Mỗi câu 2 phút [cite: 5]
-                .active(true)
-                .createdBy(currentUser)
-                .expPerCorrectAnswer(20) // Điểm EXP cơ bản hào phóng [cite: 7]
-                .build();
-
-        Exam savedExam = examRepository.save(dynamicExam);
-
-        // BƯỚC 4: Lưu danh sách câu hỏi vào bảng trung gian exam_questions
-        List<ExamQuestion> examQuestions = new ArrayList<>();
-        for (int i = 0; i < finalSelectedQuestions.size(); i++) {
-            ExamQuestionId eqId = new ExamQuestionId(savedExam.getId(), finalSelectedQuestions.get(i).getId());
-            ExamQuestion eq = ExamQuestion.builder()
-                    .id(eqId)
-                    .exam(savedExam)
-                    .question(finalSelectedQuestions.get(i))
-                    .orderPriority(i + 1)
+            // Tiến hành đóng gói và lưu đề mới tinh này xuống DB
+            String examCode = String.valueOf(System.currentTimeMillis() % 1000000);
+            Exam dynamicExam = Exam.builder()
+                    .title(String.format("Đề Tự Động %d Câu - Mã %s", totalQuestions, examCode))
+                    .examType("DYNAMIC")
+                    .difficulty(request.getDifficulty())
+                    .totalQuestions(totalQuestions)
+                    .durationMinutes(totalQuestions * 2)
+                    .active(true)
+                    .createdBy(currentUser)
+                    .expPerCorrectAnswer(20)
                     .build();
-            examQuestions.add(eq);
-        }
-        examQuestionRepository.saveAll(examQuestions);
 
-        Map<String, ExamTag> uniqueExamTagMap = new HashMap<>();
+            Exam savedExam = examRepository.save(dynamicExam);
 
-        for (Question q : finalSelectedQuestions) {
-            if (q.getTags() == null) continue;
-            for (QuestionTag tag : q.getTags()) {
-                if (tag.getTheme() != null && tag.getSkill() != null) {
-                    Integer themeId = tag.getTheme().getId();
-                    Integer skillId = tag.getSkill().getId();
+            // --- Phần lưu examQuestions và examTags của bạn ---
+            List<ExamQuestion> examQuestions = new ArrayList<>();
+            for (int i = 0; i < finalSelectedQuestions.size(); i++) {
+                ExamQuestionId eqId = new ExamQuestionId(savedExam.getId(), finalSelectedQuestions.get(i).getId());
+                ExamQuestion eq = ExamQuestion.builder()
+                        .id(eqId)
+                        .exam(savedExam)
+                        .question(finalSelectedQuestions.get(i))
+                        .orderPriority(i + 1)
+                        .build();
+                examQuestions.add(eq);
+            }
+            examQuestionRepository.saveAll(examQuestions);
 
-                    // Tạo khóa String duy nhất để không lặp lại thực thể trùng ID trên RAM
-                    String key = savedExam.getId() + "_" + themeId + "_" + skillId;
+            Map<String, ExamTag> uniqueExamTagMap = new HashMap<>();
+            for (Question q : finalSelectedQuestions) {
+                if (q.getTags() == null) continue;
+                for (QuestionTag tag : q.getTags()) {
+                    if (tag.getTheme() != null && tag.getSkill() != null) {
+                        Integer themeId = tag.getTheme().getId();
+                        Integer skillId = tag.getSkill().getId();
+                        String key = savedExam.getId() + "_" + themeId + "_" + skillId;
 
-                    if (!uniqueExamTagMap.containsKey(key)) {
-                        uniqueExamTagMap.put(key, ExamTag.builder()
-                                .id(new ExamTagId(savedExam.getId(), themeId, skillId))
-                                .exam(savedExam)
-                                .theme(tag.getTheme()) // Dùng luôn thực thể trên RAM, cực nhanh
-                                .skill(tag.getSkill())
-                                .build());
+                        if (!uniqueExamTagMap.containsKey(key)) {
+                            uniqueExamTagMap.put(key, ExamTag.builder()
+                                    .id(new ExamTagId(savedExam.getId(), themeId, skillId))
+                                    .exam(savedExam)
+                                    .theme(tag.getTheme())
+                                    .skill(tag.getSkill())
+                                    .build());
+                        }
                     }
                 }
             }
+            List<ExamTag> examTags = new ArrayList<>(uniqueExamTagMap.values());
+            savedExam.setExamTags(examTags);
+
+            return mapToExamResponse(savedExam);
+
+        } catch (RuntimeException e) {
+            // =========================================================================
+            // CƠ CHẾ CỨU HỘ KHI KHÔNG THỂ TẠO ĐỀ MỚI (Lỗi thiếu câu hỏi lẻ dưới DB)
+            // =========================================================================
+
+            // TẦNG 2: Tìm xem có đề cũ nào khớp cấu hình request mà user CHƯA TỪNG LÀM không
+            if (userId != null) {
+                List<Exam> unattemptedExams = examRepository.findAvailableExamsByThemesAndType(
+                        request.getThemeIds(), totalQuestions, request.getQuestionTypes(), userId
+                );
+                if (!unattemptedExams.isEmpty()) {
+                    int randomIndex = java.util.concurrent.ThreadLocalRandom.current().nextInt(unattemptedExams.size());
+                    return mapToExamResponse(unattemptedExams.get(randomIndex));
+                }
+            }
+
+            // TẦNG 3: Nếu đã làm hết sạch các đề cũ -> Chấp nhận bốc đề cũ BẤT KỲ (kể cả đã làm)
+            List<Exam> anyExams = examRepository.findAnyAvailableExams(
+                    request.getThemeIds(), totalQuestions, request.getQuestionTypes()
+            );
+
+            if (!anyExams.isEmpty()) {
+                int randomIndex = java.util.concurrent.ThreadLocalRandom.current().nextInt(anyExams.size());
+                return mapToExamResponse(anyExams.get(randomIndex));
+            }
+
+            // Trường hợp cạn kiệt hoàn toàn dữ liệu (Cả câu hỏi lẻ lẫn đề cũ đều không đủ cấu hình)
+            throw new RuntimeException("Ngân hàng câu hỏi không đủ cấu trúc để sinh mới và không tìm thấy đề thi cũ phù hợp!");
         }
-
-        // Lưu đúng các cặp thực tế, ko query lại DB, ko sợ lỗi trùng khóa
-        List<ExamTag> examTags = new ArrayList<>(uniqueExamTagMap.values());
-        savedExam.setExamTags(examTags);
-
-        // BƯỚC 7: Trả về Response
-        return mapToExamResponse(savedExam);
     }
 
     /**
