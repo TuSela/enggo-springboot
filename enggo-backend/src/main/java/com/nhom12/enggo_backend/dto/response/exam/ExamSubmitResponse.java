@@ -19,6 +19,7 @@ public class ExamSubmitResponse {
     LocalDateTime startedAt;
     LocalDateTime completedAt;
     Long timeTakenSeconds;
+    String timeSpent;
     Integer expGained;
     Integer bonusExp;
     List<ExamAttemptDetailResponse> detail;

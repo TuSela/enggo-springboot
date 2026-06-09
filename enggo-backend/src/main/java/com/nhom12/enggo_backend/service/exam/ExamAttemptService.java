@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -103,12 +104,15 @@ public class ExamAttemptService {
         user.setLevel(newLevelInfo.getCurrentLevel());
         userRepository.save(user);
 
+        LocalDateTime completedAt = !isTimeOut ? LocalDateTime.now() : LocalDateTime.now().plusMinutes(duration);
+
         attempt.setCorrectAnswersCount(correctCount);
-        attempt.setCompletedAt(isTimeOut ? LocalDateTime.now() : LocalDateTime.now().plusMinutes(duration));
+        attempt.setCompletedAt(completedAt);
         attempt.setTotalScore(totalScore);
         attempt.setComplete(true);
         attempt.setExpGained(baseExp);
         attempt.setBonusExp(bonusExp);
+        attempt.setTimeSpent(calculateTimeSpent(attempt.getStartedAt(), completedAt, attemptId));
         examAttemptRepository.save(attempt);
 
         examAttemptDetailRepository.saveAll(details);
@@ -153,6 +157,16 @@ public class ExamAttemptService {
         };
 
         return java.util.concurrent.ThreadLocalRandom.current().nextInt(minBonusExp, maxBonusExp + 1);
+    }
+
+    private String calculateTimeSpent(LocalDateTime startedAt, LocalDateTime completedAt, Integer attemptId) {
+        var attempt = examAttemptRepository.findById(attemptId).orElseThrow(() -> new RuntimeException("Exam Attempt Not Found"));
+        Duration durationBetween = Duration.between(attempt.getStartedAt(), attempt.getCompletedAt());
+
+        long minutes = durationBetween.toMinutes();
+        long seconds = durationBetween.toSecondsPart();
+
+        return String.format("%02d:%02d", minutes, seconds);
     }
 
     private ScoreCheck scoreMultipleChoice (Question question, ExamAnswerRequest answer, Exam exam) {
