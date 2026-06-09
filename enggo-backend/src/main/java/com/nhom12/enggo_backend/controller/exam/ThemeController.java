@@ -8,8 +8,11 @@ import com.nhom12.enggo_backend.service.exam.ThemeService;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -19,8 +22,8 @@ import java.util.Map;
 public class ThemeController {
     private final ThemeService themeService;
 
-    @PostMapping
-    ApiResponse<Theme> addTheme(@RequestBody ThemeRequest request) {
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    ApiResponse<Theme> addTheme(@ModelAttribute ThemeRequest request) throws IOException {
         return ApiResponse.<Theme>builder()
                 .result(themeService.addTheme(request))
                 .build();
@@ -48,10 +51,10 @@ public class ThemeController {
                 .build();
     }
 
-    @PutMapping("/{id}")
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     ApiResponse<Theme> updateTheme(
-            @RequestBody ThemeRequest request,
-            @PathVariable("id") Integer id) {
+            @ModelAttribute ThemeRequest request,
+            @PathVariable("id") Integer id) throws IOException {
         return ApiResponse.<Theme>builder()
                 .result(themeService.updateTheme(request, id))
                 .build();

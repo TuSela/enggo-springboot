@@ -41,6 +41,9 @@ public class Theme {
     @Column(name = "is_active")
     Boolean active;
 
+    @Column(name = "theme_image")
+    String themeImage;
+
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
