@@ -15,7 +15,7 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.MySQLDialect
 
-  # 🎯 BỔ SUNg: Cấu hình kết nối Redis cho tính năng Matchmaking
+  # 🎯 BỔ SUN: Cấu hình kết nối Redis cho tính năng Matchmaking
   data:
     redis:
       host: ${SPRING_REDIS_HOST:localhost}
