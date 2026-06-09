@@ -18,7 +18,7 @@ spring:
   # 🎯 BỔ SUNG: Cấu hình kết nối Redis cho tính năng Matchmaking
   data:
     redis:
-      host: ${SPRING_REDIS_HOST:localhost}
+      host: ${SPRING_REDIS_HOST:enggo-redis}
       port: ${SPRING_REDIS_PORT:6379}
       # password: ${SPRING_REDIS_PASSWORD:} # Mở ra nếu Redis của bạn đặt mật khẩu
 
