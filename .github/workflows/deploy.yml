@@ -1,12 +1,10 @@
 name: EngGo CI/CD Pipeline
 
-# Kích hoạt khi có hành động PUSH hoặc MERGE vào nhánh main
 on:
   push:
     branches: [ "main" ]
 
 jobs:
-  # GIAI ĐOẠN 1: TỰ ĐỘNG BIÊN DỊCH VÀ ĐÓNG GÓI IMAGE (CI)
   build-and-push:
     runs-on: ubuntu-latest
     steps:
@@ -20,7 +18,6 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      # ĐÃ SỬA: Thêm working-directory để bắt GitHub Actions chui vào thư mục enggo-backend chạy lệnh Maven
       - name: Đóng gói ứng dụng thành file JAR bằng Maven (Bỏ qua chạy test để build nhanh)
         run: mvn clean package -DskipTests
         working-directory: enggo-backend
@@ -31,7 +28,6 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # ĐÃ SỬA: Trỏ context và file vào đúng thư mục con enggo-backend để Docker tìm thấy Dockerfile
       - name: Xây dựng Docker Image và Push lên Docker Hub
         uses: docker/build-push-action@v5
         with:
@@ -40,9 +36,8 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/enggo-backend:latest
 
-  # GIAI ĐOẠN 2: TỰ ĐỘNG ĐIỀU KHIỂN EC2 CẬP NHẬT APP (CD)
   deploy-to-ec2:
-    needs: build-and-push # Phải build thành công ở trên thì mới chạy bước này
+    needs: build-and-push
     runs-on: ubuntu-latest
     steps:
       - name: Kết nối SSH vào EC2 và thực thi script cập nhật app
@@ -52,14 +47,7 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Di chuyển vào thư mục chứa docker-compose trên EC2 của Tú
             cd /home/ubuntu/enggo-project
-            
-            # Tải Docker Image mới nhất từ Docker Hub về
             docker compose pull enggo-backend
-            
-            # Khởi động lại duy nhất container backend chạy ngầm
             docker compose up -d enggo-backend
-            
-            # Dọn dẹp các bản image cũ bị thừa để nhẹ ổ cứng server
             docker image prune -f
