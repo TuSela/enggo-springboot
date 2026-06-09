@@ -1,6 +1,6 @@
 name: EngGo CI/CD Pipeline
 
-# Kích hoạt khi có hành động PUSH hoặc MERGE vào nhánh develop
+# Kích hoạt khi có hành động PUSH hoặc MERGE vào nhánh main
 on:
   push:
     branches: [ "main" ]
@@ -20,8 +20,10 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      # ĐÃ SỬA: Thêm working-directory để bắt GitHub Actions chui vào thư mục enggo-backend chạy lệnh Maven
       - name: Đóng gói ứng dụng thành file JAR bằng Maven (Bỏ qua chạy test để build nhanh)
         run: mvn clean package -DskipTests
+        working-directory: enggo-backend
 
       - name: Đăng nhập vào tài khoản Docker Hub
         uses: docker/login-action@v3
@@ -29,10 +31,12 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      # ĐÃ SỬA: Trỏ context và file vào đúng thư mục con enggo-backend để Docker tìm thấy Dockerfile
       - name: Xây dựng Docker Image và Push lên Docker Hub
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./enggo-backend
+          file: ./enggo-backend/Dockerfile
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/enggo-backend:latest
 
