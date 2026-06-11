@@ -78,7 +78,7 @@ public class MatchmakingService {
                 .orElseThrow(() -> new RuntimeException("Player 1 not found"));
 
 
-        Exam randomExam = examRepository.findAll().stream().findFirst()
+        Exam randomExam = examRepository.findRandomExam()
                 .orElseThrow(() -> new RuntimeException("No exam available for PVP match"));
 
         PvpMatch newMatch = PvpMatch.builder()
@@ -95,10 +95,53 @@ public class MatchmakingService {
 
         return PvpMatchResponse.builder()
                 .id(savedMatch.getId())
-                .player1Id(savedMatch.getPlayer1().getId())
-                .player1Username(savedMatch.getPlayer1().getUsername())
-                .player2Id(savedMatch.getPlayer2().getId())
-                .player2Username(savedMatch.getPlayer2().getUsername())
+                .player1Id(player1.getId())
+                .avatarUrlP1(player1.getAvatarUrl())
+                .player1Username(player1.getUsername())
+                .eloP1(player1.getElo())
+                .player2Id(player2.getId())
+                .avatarUrlP2(player2.getAvatarUrl())
+                .player2Username(player2.getUsername())
+                .eloP2(player2.getElo())
+                .examId(savedMatch.getExam().getId())
+                .examTitle(savedMatch.getExam().getTitle())
+                .status(savedMatch.getStatus())
+                .startTime(savedMatch.getStartTime())
+                .build();
+    }
+
+    @Transactional
+    public PvpMatchResponse createDirectMatch(Integer player1Id, Integer player2Id) {
+        User player1 = userRepository.findById(player1Id)
+                .orElseThrow(() -> new RuntimeException("Player 1 not found"));
+        User player2 = userRepository.findById(player2Id)
+                .orElseThrow(() -> new RuntimeException("Player 2 not found"));
+
+        Exam randomExam = examRepository.findRandomExam()
+                .orElseThrow(() -> new RuntimeException("No exam available for PVP match"));
+
+        PvpMatch newMatch = PvpMatch.builder()
+                .player1(player1)
+                .player2(player2)
+                .exam(randomExam)
+                .status(String.valueOf(MatchStatus.PLAYING))
+                .player1Score(0)
+                .player2Score(0)
+                .startTime(LocalDateTime.now())
+                .build();
+
+        PvpMatch savedMatch = pvpMatchRepository.save(newMatch);
+
+        return PvpMatchResponse.builder()
+                .id(savedMatch.getId())
+                .player1Id(player1.getId())
+                .avatarUrlP1(player1.getAvatarUrl())
+                .player1Username(player1.getUsername())
+                .eloP1(player1.getElo())
+                .player2Id(player2.getId())
+                .avatarUrlP2(player2.getAvatarUrl())
+                .player2Username(player2.getUsername())
+                .eloP2(player2.getElo())
                 .examId(savedMatch.getExam().getId())
                 .examTitle(savedMatch.getExam().getTitle())
                 .status(savedMatch.getStatus())
@@ -126,7 +169,7 @@ public class MatchmakingService {
         var question = questionRepository.findById(request.getQuestionId())
                 .orElseThrow(() -> new RuntimeException("Question Not Found"));
 
-        // Ki?m tra c�u h?i c� trong d? thi c?a tr?n d?u kh�ng
+        // Ki?m tra cu h?i c trong d? thi c?a tr?n d?u khng
         boolean isBelong = pvpMatch.getExam().getExamQuestions().stream()
                 .anyMatch(e -> e.getQuestion().getId().equals(question.getId()));
         if (!isBelong) {
@@ -158,12 +201,12 @@ public class MatchmakingService {
                 .build();
     }
     @Transactional
-    // ?? H�m API d�nh ri�ng cho m�n h�nh PvP QuizActivity l?y d?
+    // ?? Hm API dnh ring cho mn hnh PvP QuizActivity l?y d?
     public ExamPvpDisplayResponse startPvpExam (Integer matchId, User playerId) {
-        PvpMatch pvpMatch = pvpMatchRepository.findById(matchId).orElseThrow(() -> new RuntimeException("L?I: Kh�ng t�m th?y PVPMatch : "));
+        PvpMatch pvpMatch = pvpMatchRepository.findById(matchId).orElseThrow(() -> new RuntimeException("L?I: Khng tm th?y PVPMatch : "));
         User player2 = pvpMatch.getPlayer2();
         User player1 = pvpMatch.getPlayer1();
-        var exam = examRepository.findById(pvpMatch.getExam().getId()).orElseThrow(() -> new RuntimeException("L?I: Kh�ng t�m th?y b�i thi (Exam) v?i ID: " + pvpMatch.getId()));
+        var exam = examRepository.findById(pvpMatch.getExam().getId()).orElseThrow(() -> new RuntimeException("L?I: Khng tm th?y bi thi (Exam) v?i ID: " + pvpMatch.getId()));
 
         if (!exam.getActive()) {
             throw new IllegalStateException("Exam has been stopped");
@@ -255,6 +298,7 @@ public class MatchmakingService {
         }
         return null;
     }
+
     private MatchResultResponse finalizeMatch(PvpMatch match) {
         match.setStatus(String.valueOf(MatchStatus.FINISHED));
         match.setEndTime(LocalDateTime.now());
@@ -263,7 +307,11 @@ public class MatchmakingService {
         Integer winnerId = 0;
         User player1 = match.getPlayer1();
         User player2 = match.getPlayer2();
-        int eloChange = 25; 
+
+        int oldElo1 = player1.getElo() != null ? player1.getElo() : 1000;
+        int oldElo2 = player2.getElo() != null ? player2.getElo() : 1000;
+
+        int eloChange = 25;
         if (score1 > score2) {
             winnerId = player1.getId();
             match.setWinner(player1);
@@ -272,14 +320,37 @@ public class MatchmakingService {
         } else if (score2 > score1) {
             winnerId = player2.getId();
             match.setWinner(player2);
-            updateElo(player2, player1, eloChange); 
+            updateElo(player2, player1, eloChange);
             player2.setPvpWins((player2.getPvpWins() == null ? 0 : player2.getPvpWins()) + 1);
         } else {
             updateElo(player1, player2, 0);
         }
         userRepository.save(player1); userRepository.save(player2);
         pvpMatchRepository.save(match);
-        return MatchResultResponse.builder().matchId(match.getId()).winnerId(winnerId).player1Score(score1).player2Score(score2).eloChange(eloChange).status("FINISHED").build();
+
+        var p1Result = MatchResultResponse.PlayerResult.builder()
+                .avatarUrl(player1.getAvatarUrl())
+                .playerScore(score1)
+                .eloChange(player1.getElo() - oldElo1)
+                .correctAnswersCount(match.getPlayer1Attempt().getCorrectAnswersCount())
+                .elo(player1.getElo())
+                .build();
+
+        var p2Result = MatchResultResponse.PlayerResult.builder()
+                .avatarUrl(player2.getAvatarUrl())
+                .playerScore(score2)
+                .eloChange(player2.getElo() - oldElo2)
+                .correctAnswersCount(match.getPlayer2Attempt().getCorrectAnswersCount())
+                .elo(player2.getElo())
+                .build();
+
+        return MatchResultResponse.builder()
+                .matchId(match.getId())
+                .winnerId(winnerId)
+                .player1(p1Result)
+                .player2(p2Result)
+                .status("FINISHED")
+                .build();
     }
 
     private void updateElo(User winner, User loser, int change) {

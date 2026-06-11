@@ -33,7 +33,6 @@ public class MatchController {
     private final ConcurrentHashMap<Integer, Integer> readyPlayersCount = new ConcurrentHashMap<>();
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
 
-
     public MatchController(MatchmakingService matchmakingService, SimpMessagingTemplate messagingTemplate) {
         this.matchmakingService = matchmakingService;
         this.messagingTemplate = messagingTemplate;
@@ -122,4 +121,5 @@ public class MatchController {
             messagingTemplate.convertAndSend("/topic/match/" + matchId + "/result", result);
         }
     }
+
 }
