@@ -1,10 +1,12 @@
 package com.nhom12.enggo_backend.controller.gamification;
 
+import com.nhom12.enggo_backend.dto.request.exam.RandomBlueprintRequest;
 import com.nhom12.enggo_backend.dto.request.gamification.InviteRequest;
 import com.nhom12.enggo_backend.dto.response.gamification.InviteResponse;
 import com.nhom12.enggo_backend.dto.response.gamification.PvpMatchResponse;
 import com.nhom12.enggo_backend.entity.identity.User;
 import com.nhom12.enggo_backend.repository.UserRepository;
+import com.nhom12.enggo_backend.service.exam.ExamGenerationService;
 import com.nhom12.enggo_backend.service.gamification.MatchmakingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -54,6 +56,7 @@ public class FriendInviteController {
                 .inviteePlayerId(invitee.getId())
                 .inviterUsername(inviter.getUsername())
                 .inviteeUsername(invitee.getUsername())
+                .randomBlueprintRequest(request.getRandomBlueprintRequest())
                 .status("PENDING")
                 .build();
 
@@ -128,7 +131,8 @@ public class FriendInviteController {
         // T�i dung matchmakingService de tao tran tu 2 player cu the
         PvpMatchResponse matchResponse = matchmakingService.createDirectMatch(
                 invite.getInviterPlayerId(),
-                invite.getInviteePlayerId()
+                invite.getInviteePlayerId(),
+                invite.getRandomBlueprintRequest()
         );
 
         if (matchResponse != null) {

@@ -1,5 +1,6 @@
 package com.nhom12.enggo_backend.dto.response.gamification;
 
+import com.nhom12.enggo_backend.dto.request.exam.RandomBlueprintRequest;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -14,5 +15,6 @@ public class InviteResponse {
     Integer inviteePlayerId;
     String inviterUsername;
     String inviteeUsername;
+    RandomBlueprintRequest randomBlueprintRequest;
     String status; // PENDING, ACCEPTED, DECLINED, TIMEOUT
 }

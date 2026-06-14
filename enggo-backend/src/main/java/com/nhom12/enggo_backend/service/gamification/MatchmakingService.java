@@ -2,6 +2,7 @@ package com.nhom12.enggo_backend.service.gamification;
 
 import com.nhom12.enggo_backend.dto.request.exam.ExamAnswerRequest;
 import com.nhom12.enggo_backend.dto.request.exam.ExamSubmitRequest;
+import com.nhom12.enggo_backend.dto.request.exam.RandomBlueprintRequest;
 import com.nhom12.enggo_backend.dto.response.gamification.ExamPvpDisplayResponse;
 import com.nhom12.enggo_backend.dto.response.gamification.MatchResultResponse;
 import com.nhom12.enggo_backend.dto.response.gamification.PvpMatchResponse;
@@ -109,16 +110,19 @@ public class MatchmakingService {
                 .startTime(savedMatch.getStartTime())
                 .build();
     }
-
+    @Autowired
+    ExamGenerationPVPService examGenerationPVPService;
     @Transactional
-    public PvpMatchResponse createDirectMatch(Integer player1Id, Integer player2Id) {
+    public PvpMatchResponse createDirectMatch(Integer player1Id, Integer player2Id, RandomBlueprintRequest request) {
+        System.out.println("Themes: " + request.getThemeIds() +"so luong: "+ request.getTotalQuestions() + "Do kho: "+ request.getDifficulty()+"loai cau hoi: "+ request.getQuestionTypes());
+
         User player1 = userRepository.findById(player1Id)
                 .orElseThrow(() -> new RuntimeException("Player 1 not found"));
         User player2 = userRepository.findById(player2Id)
                 .orElseThrow(() -> new RuntimeException("Player 2 not found"));
 
-        Exam randomExam = examRepository.findRandomExam()
-                .orElseThrow(() -> new RuntimeException("No exam available for PVP match"));
+
+        Exam randomExam = examGenerationPVPService.getOrGenerateExamResponse(request,player1);
 
         PvpMatch newMatch = PvpMatch.builder()
                 .player1(player1)
