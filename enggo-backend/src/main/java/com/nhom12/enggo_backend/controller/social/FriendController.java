@@ -72,7 +72,6 @@ public class FriendController {
                 .result(true)
                 .build();
     }
-
     // 4. API H?y k?t b?n
     @DeleteMapping("/unfriend/{targetUserId}")
     public ApiResponse<Boolean> unfriend(@PathVariable Integer targetUserId) {
