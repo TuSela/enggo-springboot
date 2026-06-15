@@ -36,7 +36,7 @@ public class FriendController {
     }
 
     // 0. API L?y danh s�ch b?n b�
-    @GetMapping()
+    @GetMapping("/pvp")
     public ApiResponse<List<UserResponse>> getFriends() {
         Integer currentUserId = getCurrentUserId();
         return ApiResponse.<List<UserResponse>>builder()

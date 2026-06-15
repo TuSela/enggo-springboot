@@ -1,6 +1,7 @@
 package com.nhom12.enggo_backend.service.social;
 
 import com.nhom12.enggo_backend.dto.response.UserResponse;
+import com.nhom12.enggo_backend.dto.response.social.NotificationPayload;
 import com.nhom12.enggo_backend.entity.identity.User;
 import com.nhom12.enggo_backend.entity.social.Friend;
 import com.nhom12.enggo_backend.entity.social.FriendRequest;
@@ -13,11 +14,11 @@ import com.nhom12.enggo_backend.repository.social.FriendRequestRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +29,7 @@ public class FriendService {
     FriendRequestRepository friendRequestRepository;
     UserRepository userRepository;
     UserMapper userMapper;
+    SimpMessagingTemplate messagingTemplate; // Đã đưa lên đúng vị trí để tự động bắt final & inject qua Constructor
 
     public List<UserResponse> getFriends(Integer userId) {
         User user = userRepository.findById(userId)
@@ -40,13 +42,13 @@ public class FriendService {
                     User friendUser = friend.getUser1().getId().equals(userId) ? friend.getUser2() : friend.getUser1();
                     return userMapper.toUserResponse(friendUser);
                 })
-                .collect(Collectors.toList());
+                .toList(); // Tối ưu thành .toList() thay vì .collect(Collectors.toList()) nếu dùng Java 16+
     }
 
     @Transactional
     public void sendFriendRequest(Integer senderId, Integer receiverId) {
         if (senderId.equals(receiverId)) {
-            throw new AppException(ErrorCode.USER_NOT_EXISTED);
+            throw new AppException(ErrorCode.USER_NOT_EXISTED); // Nên thay bằng ErrorCode.CANNOT_SEND_TO_ALONE nếu có
         }
 
         User sender = userRepository.findById(senderId)
@@ -55,7 +57,7 @@ public class FriendService {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
         if (friendRepository.existsByUsers(sender, receiver)) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
+            throw new AppException(ErrorCode.UNAUTHENTICATED); // Nên thay bằng ALREADY_FRIENDS nếu có
         }
 
         if (friendRequestRepository.existsBySenderAndReceiver(sender, receiver)) {
@@ -66,8 +68,21 @@ public class FriendService {
                 .sender(sender)
                 .receiver(receiver)
                 .build();
-        
+
         friendRequestRepository.save(request);
+
+        // Gửi thông báo realtime tới người nhận qua WebSocket
+        messagingTemplate.convertAndSendToUser(
+                receiver.getUsername(),
+                "/queue/notifications",
+                NotificationPayload.builder()
+                        .type("FRIEND_REQUEST")
+                        .fromUserId(sender.getId())
+                        .fromUsername(sender.getUsername())
+                        .requestId(request.getId())
+                        .message(sender.getUsername() + " đã gửi lời mời kết bạn cho bạn")
+                        .build()
+        );
     }
 
     @Transactional
@@ -86,6 +101,18 @@ public class FriendService {
 
         friendRepository.save(friend);
         friendRequestRepository.delete(request);
+
+        // Thông báo cho người gửi biết yêu cầu đã được chấp nhận
+        messagingTemplate.convertAndSendToUser(
+                request.getSender().getUsername(),
+                "/queue/notifications",
+                NotificationPayload.builder()
+                        .type("FRIEND_ACCEPTED")
+                        .fromUserId(request.getReceiver().getId())
+                        .fromUsername(request.getReceiver().getUsername())
+                        .message(request.getReceiver().getUsername() + " đã chấp nhận lời mời kết bạn")
+                        .build()
+        );
     }
 
     @Transactional
@@ -97,6 +124,7 @@ public class FriendService {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
 
+        // Đã đưa lệnh delete vào đúng block hàm sau khi kiểm tra quyền hợp lệ
         friendRequestRepository.delete(request);
     }
 
@@ -108,7 +136,7 @@ public class FriendService {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
         Friend friend = friendRepository.findByUsers(currentUser, targetUser)
-                .orElseThrow(() -> new AppException(ErrorCode.FRIEND_REQUEST_NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCode.FRIEND_REQUEST_NOT_FOUND)); // Nên đổi thành FRIEND_NOT_FOUND nếu có
 
         friendRepository.delete(friend);
     }

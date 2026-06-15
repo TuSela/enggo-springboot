@@ -23,6 +23,7 @@ public class UserResponse {
     String avatarUrl;
     String status;
     String bio;
+    Integer elo;
     LocalDateTime createdAt;
     Set<RoleResponse> roles;
 }

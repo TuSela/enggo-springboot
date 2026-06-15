@@ -26,7 +26,8 @@ public class SecurityConfig {
             "/skills/**", "/questions/**", "/exams/**", "/attempts/**", "/gamification/**","/swagger-ui/**",
             "/swagger-ui.html",
             "/v3/api-docs/**",
-            "/v3/api-docs.yaml","/ws/**", "/ws-sockjs/**"
+            "/v3/api-docs.yaml","/ws/**", "/ws-sockjs/**",
+            "/ws/**", "/ws-native/**"
     };
 
     @Autowired
