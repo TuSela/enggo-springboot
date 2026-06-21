@@ -207,10 +207,14 @@ public class MatchmakingService {
     @Transactional
     // ?? Hm API dnh ring cho mn hnh PvP QuizActivity l?y d?
     public ExamPvpDisplayResponse startPvpExam (Integer matchId, User playerId) {
-        PvpMatch pvpMatch = pvpMatchRepository.findById(matchId).orElseThrow(() -> new RuntimeException("L?I: Khng tm th?y PVPMatch : "));
+        // Log start of method for debugging
+        System.out.println("[DEBUG] startPvpExam called with matchId=" + matchId);
+        // Retrieve the match and both participants
+        PvpMatch pvpMatch = pvpMatchRepository.findById(matchId)
+                .orElseThrow(() -> new RuntimeException("L?I: Khng tm th?y PVPMatch : "));
         User player2 = pvpMatch.getPlayer2();
         User player1 = pvpMatch.getPlayer1();
-        var exam = examRepository.findById(pvpMatch.getExam().getId()).orElseThrow(() -> new RuntimeException("L?I: Khng tm th?y bi thi (Exam) v?i ID: " + pvpMatch.getId()));
+        var exam = pvpMatch.getExam();
 
         if (!exam.getActive()) {
             throw new IllegalStateException("Exam has been stopped");
@@ -243,6 +247,12 @@ public class MatchmakingService {
         pvpMatch.setPlayer1Attempt(attempt);
         pvpMatch.setPlayer2Attempt(attempt2);
         pvpMatchRepository.save(pvpMatch);
+
+        // Log detailed info for debugging
+        System.out.println("[DEBUG] startPvpExam matchId=" + matchId
+                + " examId=" + exam.getId()
+                + " p1AttemptId=" + attempt.getId()
+                + " p2AttemptId=" + attempt2.getId());
 
         return examMapper.toExamPvpDisplayResponse(exam, attempt, attempt2);
     }
@@ -355,6 +365,17 @@ public class MatchmakingService {
                 .player2(p2Result)
                 .status("FINISHED")
                 .build();
+    }
+    public String getPlayer1Username(Integer matchId) {
+        PvpMatch match = pvpMatchRepository.findById(matchId)
+                .orElseThrow(() -> new RuntimeException("Match not found"));
+        return match.getPlayer1().getUsername();
+    }
+
+    public String getPlayer2Username(Integer matchId) {
+        PvpMatch match = pvpMatchRepository.findById(matchId)
+                .orElseThrow(() -> new RuntimeException("Match not found"));
+        return match.getPlayer2().getUsername();
     }
 
     private void updateElo(User winner, User loser, int change) {

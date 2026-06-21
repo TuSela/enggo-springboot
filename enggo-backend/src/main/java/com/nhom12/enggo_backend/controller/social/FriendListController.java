@@ -4,6 +4,7 @@ import com.nhom12.enggo_backend.dto.request.ApiResponse;
 import com.nhom12.enggo_backend.dto.response.social.FriendResponse;
 import com.nhom12.enggo_backend.entity.identity.User;
 import com.nhom12.enggo_backend.repository.UserRepository;
+import com.nhom12.enggo_backend.repository.social.FriendRequestRepository;
 import com.nhom12.enggo_backend.service.social.FriendListService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -22,17 +23,20 @@ public class FriendListController {
 
     FriendListService friendListService;
     UserRepository userRepository;
+    FriendRequestRepository friendRequestRepository; // ← THÊM inject
 
-    private Integer getCurrentUserId() {
+    // Trả về User object thay vì chỉ ID
+    private User getCurrentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String username = auth.getName();
-        User user = userRepository.findByUsername(username)
+        return userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
-        return user.getId();
     }
 
-    // 1. Lấy toàn bộ danh sách bạn bè
-    // GET /social/friends
+    private Integer getCurrentUserId() {
+        return getCurrentUser().getId();
+    }
+
     @GetMapping()
     public ApiResponse<List<FriendResponse>> getAllFriends() {
         return ApiResponse.<List<FriendResponse>>builder()
@@ -40,8 +44,6 @@ public class FriendListController {
                 .build();
     }
 
-    // 2. Lấy bạn bè đang online (phần "ĐANG HOẠT ĐỘNG")
-    // GET /social/friends/online
     @GetMapping("/online")
     public ApiResponse<List<FriendResponse>> getOnlineFriends() {
         return ApiResponse.<List<FriendResponse>>builder()
@@ -49,13 +51,19 @@ public class FriendListController {
                 .build();
     }
 
-    // 3. Tìm kiếm bạn bè theo tên
-    // GET /social/friends/search?keyword=linh
     @GetMapping("/search")
-    public ApiResponse<List<FriendResponse>> searchFriends(
-            @RequestParam String keyword) {
+    public ApiResponse<List<FriendResponse>> searchFriends(@RequestParam String keyword) {
         return ApiResponse.<List<FriendResponse>>builder()
                 .result(friendListService.searchFriends(getCurrentUserId(), keyword))
+                .build();
+    }
+
+    @GetMapping("/sent-requests")
+    public ApiResponse<List<Integer>> getSentRequestIds() {
+        User currentUser = getCurrentUser(); // ← dùng getCurrentUser()
+        List<Integer> ids = friendRequestRepository.findReceiverIdsBySender(currentUser); // ← chữ thường
+        return ApiResponse.<List<Integer>>builder()
+                .result(ids)
                 .build();
     }
 }
