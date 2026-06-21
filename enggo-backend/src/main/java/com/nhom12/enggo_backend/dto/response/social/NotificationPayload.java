@@ -14,4 +14,8 @@ public class NotificationPayload {
     String fromUsername;
     String message;
     Integer requestId; // ID của FriendRequest để accept/reject
+    String examTitle;
+    String examTopic; // Chủ đề đề thi
+    String difficulty; // Độ khó (Easy, Medium, Hard)
+    Integer questionCount;
 }
