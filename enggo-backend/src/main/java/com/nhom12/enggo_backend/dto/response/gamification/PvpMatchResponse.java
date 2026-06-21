@@ -1,6 +1,7 @@
 package com.nhom12.enggo_backend.dto.response.gamification;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import jakarta.persistence.Column;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,6 +10,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -33,6 +35,10 @@ public class PvpMatchResponse {
 
     Integer examId;
     String examTitle;
+    Byte difficulty;
+    Integer totalQuestions;
+    List<Integer> themeIds;
+
     Integer player1Score;
     Integer player2Score;
 
@@ -47,4 +53,8 @@ public class PvpMatchResponse {
     LocalDateTime endTime;
 
     LocalDateTime createdAt;
+
+    Integer hostUserId;
+
+
 }

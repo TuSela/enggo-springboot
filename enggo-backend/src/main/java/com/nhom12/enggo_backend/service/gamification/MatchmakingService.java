@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.security.Principal;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,7 +45,6 @@ public class MatchmakingService {
     private ExamMapper examMapper;
     @Autowired
     private ExamAttemptRepository examAttemptRepository;
-
 
     private static final String MATCH_QUEUE_KEY = "pvp:match:queue";
 
@@ -77,7 +77,6 @@ public class MatchmakingService {
 
         User player1 = userRepository.findById(opponentId)
                 .orElseThrow(() -> new RuntimeException("Player 1 not found"));
-
 
         Exam randomExam = examRepository.findRandomExam()
                 .orElseThrow(() -> new RuntimeException("No exam available for PVP match"));
@@ -132,8 +131,8 @@ public class MatchmakingService {
                 .player1Score(0)
                 .player2Score(0)
                 .startTime(LocalDateTime.now())
+                .hostUserId(player1Id)
                 .build();
-
         PvpMatch savedMatch = pvpMatchRepository.save(newMatch);
 
         return PvpMatchResponse.builder()
@@ -150,12 +149,15 @@ public class MatchmakingService {
                 .examTitle(savedMatch.getExam().getTitle())
                 .status(savedMatch.getStatus())
                 .startTime(savedMatch.getStartTime())
+                .hostUserId(player1Id)
+                .difficulty(savedMatch.getExam().getDifficulty())
+                .totalQuestions(savedMatch.getExam().getTotalQuestions())
+                .themeIds(new ArrayList<Integer>())
                 .build();
     }
 
     public void cancelFindMatch(Integer userId) {
         redisTemplate.opsForSet().remove(MATCH_QUEUE_KEY, String.valueOf(userId));
-
     }
     @Autowired
     ExamAttemptService examAttemptService;
@@ -267,11 +269,14 @@ public class MatchmakingService {
 
                 details.add(examAttemptService.saveDetail(pvpMatch.getPlayer1Attempt(), question, answer, result));
             }
+            Duration duration = Duration.between(pvpMatch.getStartTime(), LocalDateTime.now());
+            String timeSpent = duration.getSeconds() + "";
             totalScore = totalScore.setScale(2, RoundingMode.HALF_UP);
             pvpMatch.getPlayer1Attempt().setCorrectAnswersCount(correctCount);
             pvpMatch.getPlayer1Attempt().setCompletedAt(LocalDateTime.now());
             pvpMatch.getPlayer1Attempt().setTotalScore(totalScore);
             pvpMatch.getPlayer1Attempt().setComplete(true);
+            pvpMatch.getPlayer1Attempt().setTimeSpent(timeSpent);
             examAttemptRepository.save(pvpMatch.getPlayer1Attempt());
         } else if (pvpMatch.getPlayer2().getId().equals(user.getId())) {
             int correctCount = 0;
@@ -289,11 +294,14 @@ public class MatchmakingService {
 
                 details.add(examAttemptService.saveDetail(pvpMatch.getPlayer2Attempt(), question, answer, result));
             }
+            Duration duration = Duration.between(pvpMatch.getStartTime(), LocalDateTime.now());
+            String timeSpent = duration.getSeconds() + "";
             totalScore = totalScore.setScale(2, RoundingMode.HALF_UP);
             pvpMatch.getPlayer2Attempt().setCorrectAnswersCount(correctCount);
             pvpMatch.getPlayer2Attempt().setCompletedAt(LocalDateTime.now());
             pvpMatch.getPlayer2Attempt().setTotalScore(totalScore);
             pvpMatch.getPlayer2Attempt().setComplete(true);
+            pvpMatch.getPlayer2Attempt().setTimeSpent(timeSpent);
             examAttemptRepository.save(pvpMatch.getPlayer2Attempt());
         }
         pvpMatchRepository.save(pvpMatch);
@@ -321,14 +329,19 @@ public class MatchmakingService {
             match.setWinner(player1);
             updateElo(player1, player2, eloChange);
             player1.setPvpWins((player1.getPvpWins() == null ? 0 : player1.getPvpWins()) + 1);
+            player1.incrementWinStreak();
+            player2.resetWinStreak();
         } else if (score2 > score1) {
             winnerId = player2.getId();
             match.setWinner(player2);
             updateElo(player2, player1, eloChange);
             player2.setPvpWins((player2.getPvpWins() == null ? 0 : player2.getPvpWins()) + 1);
+            player1.resetWinStreak();
+            player2.incrementWinStreak();
         } else {
             updateElo(player1, player2, 0);
         }
+
         userRepository.save(player1); userRepository.save(player2);
         pvpMatchRepository.save(match);
 
@@ -338,6 +351,9 @@ public class MatchmakingService {
                 .eloChange(player1.getElo() - oldElo1)
                 .correctAnswersCount(match.getPlayer1Attempt().getCorrectAnswersCount())
                 .elo(player1.getElo())
+                .duration(match.getPlayer1Attempt().getTimeSpent())
+                .totalQuestions(match.getExam().getTotalQuestions())
+                .WinStreak(player1.getWinStreak())
                 .build();
 
         var p2Result = MatchResultResponse.PlayerResult.builder()
@@ -346,6 +362,9 @@ public class MatchmakingService {
                 .eloChange(player2.getElo() - oldElo2)
                 .correctAnswersCount(match.getPlayer2Attempt().getCorrectAnswersCount())
                 .elo(player2.getElo())
+                .duration(match.getPlayer2Attempt().getTimeSpent())
+                .totalQuestions(match.getExam().getTotalQuestions())
+                .WinStreak(player2.getWinStreak())
                 .build();
 
         return MatchResultResponse.builder()

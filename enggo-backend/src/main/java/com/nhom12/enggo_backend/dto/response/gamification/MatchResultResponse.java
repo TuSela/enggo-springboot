@@ -3,6 +3,9 @@ package com.nhom12.enggo_backend.dto.response.gamification;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.time.LocalDateTime;
+import java.util.Date;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -25,6 +28,9 @@ public class MatchResultResponse {
         Integer playerScore;
         Integer eloChange;
         Integer correctAnswersCount;
+        Integer totalQuestions;
+        String duration;
+        Integer WinStreak;
         Integer elo;
     }
 }

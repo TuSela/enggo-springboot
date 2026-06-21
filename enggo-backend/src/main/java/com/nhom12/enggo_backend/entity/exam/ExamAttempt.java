@@ -58,6 +58,9 @@ public class ExamAttempt {
     @Column(name = "bonus_exp")
     Integer bonusExp;
 
+    @Column(name = "time_spent")
+    String timeSpent;
+
     @OneToMany(mappedBy = "attempt", cascade = CascadeType.ALL, orphanRemoval = true)
     List<ExamAttemptDetail> examAttemptDetails = new ArrayList<>();
 }

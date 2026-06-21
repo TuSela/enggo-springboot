@@ -72,4 +72,7 @@ public class PvpMatch {
 
     @Column(name = "created_at", insertable = false, updatable = false)
     LocalDateTime createdAt;
+
+    @Column(name ="host_user_id")
+    Integer hostUserId;
 }

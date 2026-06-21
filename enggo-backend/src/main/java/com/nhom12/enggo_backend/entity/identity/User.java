@@ -61,6 +61,9 @@ public class User {
     @Column(name = "elo")
     Integer elo;
 
+    @Column(name = "pending_invites")
+    Integer pendingInvites;
+
     @Column(name = "avatar_url", length = 255)
     String avatarUrl;
 
@@ -73,10 +76,20 @@ public class User {
     @Column(name = "created_at", insertable = false, updatable = false)
     LocalDateTime createdAt;
 
+    @Column(name = "win_streak")
+    Integer winStreak;
+
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "user_roles",
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id"))
     Set<Role> roles;
+    public void incrementWinStreak() {
+        this.winStreak = this.winStreak + 1;
+    }
+    public void resetWinStreak(){
+        this.winStreak = 0;
+    }
 }

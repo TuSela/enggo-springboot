@@ -71,7 +71,6 @@ public class MatchController {
                     readyPlayersCount.remove(matchId);
                 }
             }, 15, TimeUnit.SECONDS); // Ch? d�ng 15 gi�y
-
         } else {
             messagingTemplate.convertAndSend("/topic/queue-status/" + player2.getId(), "WAITING");
         }
@@ -121,5 +120,4 @@ public class MatchController {
             messagingTemplate.convertAndSend("/topic/match/" + matchId + "/result", result);
         }
     }
-
 }

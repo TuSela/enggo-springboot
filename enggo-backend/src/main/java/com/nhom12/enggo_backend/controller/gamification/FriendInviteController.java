@@ -21,7 +21,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @Controller
 public class FriendInviteController {
-
     private final SimpMessagingTemplate messagingTemplate;
     private final UserRepository userRepository;
     private final MatchmakingService matchmakingService;
@@ -42,6 +41,8 @@ public class FriendInviteController {
     // 1 Player A gui loi moi
     @MessageMapping("/invite/send")
     public void sendInvite(InviteRequest request, Principal principal) {
+        // Helper to send updated pending invite count to a user
+        // (will be defined later in this class)
         User inviter = userRepository.findByUsername(principal.getName())
                 .orElseThrow(() -> new RuntimeException("Inviter not found"));
 
@@ -134,7 +135,6 @@ public class FriendInviteController {
                 invite.getInviteePlayerId(),
                 invite.getRandomBlueprintRequest()
         );
-
         if (matchResponse != null) {
             // Gui th�ng tin tran dau cho ca 2
             messagingTemplate.convertAndSend(
