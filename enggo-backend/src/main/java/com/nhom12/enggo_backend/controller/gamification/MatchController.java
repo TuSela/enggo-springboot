@@ -75,9 +75,9 @@ public class MatchController {
             messagingTemplate.convertAndSend("/topic/queue-status/" + player2.getId(), "WAITING");
         }
     }
-
     @MessageMapping("/join-queue")
     public void joinQueue(Integer matchId, Principal principal) {
+        System.out.println("Ten nguoi san sang: " + principal.getName());
         User player = userRepository.findByUsername(principal.getName())
                 .orElseThrow(() -> new RuntimeException("Player not found"));
 
@@ -105,7 +105,6 @@ public class MatchController {
         matchmakingService.cancelFindMatch(userId);
         messagingTemplate.convertAndSend("/topic/queue-status/" + userId, "CANCELLED");
     }
-
     @MessageMapping("/match/{matchId}/progress")
     public void handleQuizProgress(
             @DestinationVariable Integer matchId,Principal principal,
