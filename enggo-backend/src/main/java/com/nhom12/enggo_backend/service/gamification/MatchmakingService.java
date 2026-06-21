@@ -318,7 +318,7 @@ public class MatchmakingService {
         match.setEndTime(LocalDateTime.now());
         int score1 = match.getPlayer1Score();
         int score2 = match.getPlayer2Score();
-        Integer winnerId = 0;
+        Integer winnerId = null;
         User player1 = match.getPlayer1();
         User player2 = match.getPlayer2();
 
@@ -361,6 +361,8 @@ public class MatchmakingService {
         return MatchResultResponse.builder()
                 .matchId(match.getId())
                 .winnerId(winnerId)
+                .player1Id(player1.getId())
+                .player2Id(player2.getId())
                 .player1(p1Result)
                 .player2(p2Result)
                 .status("FINISHED")

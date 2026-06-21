@@ -11,6 +11,8 @@ import lombok.experimental.FieldDefaults;
 public class MatchResultResponse {
     Integer matchId;
     Integer winnerId;
+    Integer player1Id;
+    Integer player2Id;
     PlayerResult player1;
     PlayerResult player2;
     String status;

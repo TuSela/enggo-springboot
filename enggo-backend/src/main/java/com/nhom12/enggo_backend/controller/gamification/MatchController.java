@@ -79,6 +79,7 @@ public class MatchController {
 
     @MessageMapping("/join-queue")
     public void joinQueue(Integer matchId, Principal principal) {
+        System.out.println("Ten nguoi san sang: " + principal.getName());
         User player = userRepository.findByUsername(principal.getName())
                 .orElseThrow(() -> new RuntimeException("Player not found"));
 
