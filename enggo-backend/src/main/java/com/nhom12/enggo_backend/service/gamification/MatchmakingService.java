@@ -373,6 +373,7 @@ public class MatchmakingService {
         pvpMatchRepository.save(match);
 
         var p1Result = MatchResultResponse.PlayerResult.builder()
+                .userName(player1.getUsername())
                 .avatarUrl(player1.getAvatarUrl())
                 .playerScore(score1)
                 .eloChange(player1.getElo() - oldElo1)
@@ -385,6 +386,7 @@ public class MatchmakingService {
                 .build();
 
         var p2Result = MatchResultResponse.PlayerResult.builder()
+                .userName(player2.getUsername())
                 .avatarUrl(player2.getAvatarUrl())
                 .playerScore(score2)
                 .eloChange(player2.getElo() - oldElo2)

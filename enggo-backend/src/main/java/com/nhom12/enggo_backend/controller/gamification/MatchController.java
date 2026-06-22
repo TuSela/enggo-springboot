@@ -73,7 +73,11 @@ public class MatchController {
                 }
             }, 15, TimeUnit.SECONDS); // Ch? d�ng 15 gi�y
         } else {
-            messagingTemplate.convertAndSend("/topic/queue-status/" + player2.getId(), "WAITING");
+            messagingTemplate.convertAndSendToUser(
+                    player2.getUsername(), // hoặc principal.getName()
+                    "/queue/queue-status",
+                    "WAITING");
+            System.out.println("User " + player2.getUsername() + " đang xếp hàng chờ (WAITING)...");
         }
     }
     @MessageMapping("/join-queue")
