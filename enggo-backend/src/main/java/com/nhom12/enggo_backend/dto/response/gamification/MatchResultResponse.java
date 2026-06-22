@@ -27,6 +27,7 @@ public class MatchResultResponse {
     @FieldDefaults(level = AccessLevel.PRIVATE)
     public static class PlayerResult {
         String userName;
+        Integer level;
         String avatarUrl;
         Integer playerScore;
         Integer eloChange;
