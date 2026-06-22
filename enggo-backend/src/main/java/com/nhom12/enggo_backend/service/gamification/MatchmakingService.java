@@ -17,6 +17,9 @@ import com.nhom12.enggo_backend.repository.exam.ExamAttemptRepository;
 import com.nhom12.enggo_backend.repository.exam.ExamRepository;
 import com.nhom12.enggo_backend.repository.exam.QuestionRepository;
 import com.nhom12.enggo_backend.repository.gamification.PvpMatchRepository;
+import com.nhom12.enggo_backend.repository.gamification.BadgeRepository;
+import com.nhom12.enggo_backend.entity.gamification.Badge;
+import com.nhom12.enggo_backend.dto.request.gamification.UserBadgeRequest;
 import com.nhom12.enggo_backend.repository.UserRepository;
 import com.nhom12.enggo_backend.service.exam.ExamAttemptService;
 import com.nhom12.enggo_backend.service.exam.ScoreCheck;
@@ -35,6 +38,14 @@ import java.util.List;
 
 @Service
 public class MatchmakingService {
+
+    @Autowired
+    private BadgeRepository badgeRepository;
+
+    @Autowired
+    private UserBadgeService userBadgeService;
+
+
 
     private final StringRedisTemplate redisTemplate;
     private final PvpMatchRepository pvpMatchRepository;
@@ -330,8 +341,8 @@ public class MatchmakingService {
         User player1 = match.getPlayer1();
         User player2 = match.getPlayer2();
 
-        int oldElo1 = player1.getElo() != null ? player1.getElo() : 1000;
-        int oldElo2 = player2.getElo() != null ? player2.getElo() : 1000;
+        int oldElo1 = player1.getElo() != null ? player1.getElo() : 75;
+        int oldElo2 = player2.getElo() != null ? player2.getElo() : 75;
 
         int eloChange = 25;
         if (score1 > score2) {
@@ -352,7 +363,13 @@ public class MatchmakingService {
             updateElo(player1, player2, 0);
         }
 
-        userRepository.save(player1); userRepository.save(player2);
+        player1.setBadgeRank(awardBadgeIfEligible(player1));
+        player2.setBadgeRank(awardBadgeIfEligible(player2));
+        userRepository.save(player1);
+        userRepository.save(player2);
+        // Award badge based on updated elo
+
+
         pvpMatchRepository.save(match);
 
         var p1Result = MatchResultResponse.PlayerResult.builder()
@@ -364,6 +381,7 @@ public class MatchmakingService {
                 .duration(match.getPlayer1Attempt().getTimeSpent())
                 .totalQuestions(match.getExam().getTotalQuestions())
                 .WinStreak(player1.getWinStreak())
+                .badgeRank(player1.getBadgeRank().getBadgeName())
                 .build();
 
         var p2Result = MatchResultResponse.PlayerResult.builder()
@@ -375,6 +393,7 @@ public class MatchmakingService {
                 .duration(match.getPlayer2Attempt().getTimeSpent())
                 .totalQuestions(match.getExam().getTotalQuestions())
                 .WinStreak(player2.getWinStreak())
+                .badgeRank(player2.getBadgeRank().getBadgeName())
                 .build();
 
         return MatchResultResponse.builder()
@@ -400,9 +419,37 @@ public class MatchmakingService {
     }
 
     private void updateElo(User winner, User loser, int change) {
-        if (winner.getElo() == null) winner.setElo(1000);
-        if (loser.getElo() == null) loser.setElo(1000);
+        if (winner.getElo() == null) winner.setElo(75);
+        if (loser.getElo() == null) loser.setElo(75);
         winner.setElo(winner.getElo() + change);
         loser.setElo(Math.max(0, loser.getElo() - change));
+
     }
-}
+        // Award badge based on current elo (every 100 points)
+        private Badge awardBadgeIfEligible(User user) {
+
+            int rankLevel = user.getElo() / 100; // integer division
+            // Define badge names in order of ranks (starting from rank 0 = no badge)
+            String[] badgeNames = new String[]{
+                    "bronze_1.0",
+                    "bronze_2.0",
+                    "bronze_3.0",
+                    "silver_1.0",
+                    "silver_2.0",
+                    "silver_3.0",
+                    "gold_1.0",
+                    "gold_2.0",
+                    "gold_3.0",
+                    "challenger_0.0"
+            };
+            // Clamp index to max badge
+            int idx = Math.min(rankLevel, badgeNames.length - 1);
+            String badgeName = badgeNames[idx];
+            // Find badge entity
+            System.out.println(badgeName);
+           return badgeRepository.findByBadgeName(badgeName);
+        }
+    }
+
+
+

@@ -25,12 +25,14 @@ public class PvpMatchResponse {
     String avatarUrlP1;
     String player1Username;
     Integer eloP1;
+    Integer levelP1;
     Integer player1AttemptId;
 
     Integer player2Id;
     String avatarUrlP2;
     String player2Username;
     Integer eloP2;
+    Integer levelP2;
     Integer player2AttemptId;
 
     Integer examId;

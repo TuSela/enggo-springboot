@@ -3,20 +3,28 @@ package com.nhom12.enggo_backend.service;
 import com.nhom12.enggo_backend.constant.PredefinedRole;
 import com.nhom12.enggo_backend.dto.request.UserCreationRequest;
 import com.nhom12.enggo_backend.dto.request.UserUpdateRequest;
+import com.nhom12.enggo_backend.dto.response.PageResponse;
+import com.nhom12.enggo_backend.dto.response.TopUsersResponse;
 import com.nhom12.enggo_backend.dto.response.UserMinimalResponse;
 import com.nhom12.enggo_backend.dto.response.UserResponse;
+import com.nhom12.enggo_backend.dto.response.gamification.BadgeResponse;
+import com.nhom12.enggo_backend.entity.gamification.Badge;
 import com.nhom12.enggo_backend.entity.identity.auth.Role;
 import com.nhom12.enggo_backend.entity.identity.User;
 import com.nhom12.enggo_backend.exception.AppException;
 import com.nhom12.enggo_backend.exception.ErrorCode;
 import com.nhom12.enggo_backend.mapper.UserMapper;
+import com.nhom12.enggo_backend.mapper.gamificationMapper.BadgeMapper;
 import com.nhom12.enggo_backend.repository.RoleRepository;
 import com.nhom12.enggo_backend.repository.UserRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -106,6 +114,42 @@ public class UserService {
     public List<UserResponse> getUsers() {
         log.info("In method get Users");
         return userRepository.findAll().stream().map(userMapper::toUserResponse).toList();
+    }
+    @Autowired
+    private BadgeMapper badgeMapper;
+
+    // New API to get top 4 users by elo and the current user's elo
+    public com.nhom12.enggo_backend.dto.response.TopUsersResponse getTopElo() {
+        // Fetch top 4 users ordered by elo descending
+        List<User> topUsers = userRepository.findTop4ByOrderByEloDesc();
+        List<com.nhom12.enggo_backend.dto.response.UserResponse> topResponses = topUsers.stream()
+                .map(userMapper::toUserResponse)
+                .toList();
+
+        // Determine the elo of the currently authenticated user
+        Integer myElo = null;
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+
+        User me = null;
+        if (auth != null && auth.isAuthenticated()) {
+            String username = auth.getName();
+            me = userRepository.findByUsername(username).orElse(null);
+        }
+        return com.nhom12.enggo_backend.dto.response.TopUsersResponse.builder()
+                .topUsers(topResponses)
+                .myRank(userMapper.toUserResponse(me))
+                .build();
+    }
+
+
+    public PageResponse<UserResponse> getLeaderBoard(Pageable pageable) {
+        Page<User> userPage = userRepository.getAllUsers(pageable);
+
+        // 2. Map trực tiếp nội dung từ Page<User> sang Page<UserResponse>
+        Page<UserResponse> responsePage = userPage.map(user -> userMapper.toUserResponse(user));
+
+        // 3. Sử dụng chính hàm Static Factory Method `.of()` bạn vừa viết để đóng gói dữ liệu hoàn chỉnh
+        return PageResponse.of(responsePage);
     }
 
     @PreAuthorize("hasRole('ADMIN')")

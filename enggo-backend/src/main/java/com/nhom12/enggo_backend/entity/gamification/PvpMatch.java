@@ -75,4 +75,7 @@ public class PvpMatch {
 
     @Column(name ="host_user_id")
     Integer hostUserId;
+
+
+
 }

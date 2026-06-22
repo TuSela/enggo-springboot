@@ -1,16 +1,8 @@
 package com.nhom12.enggo_backend.entity.identity;
 
+import com.nhom12.enggo_backend.entity.gamification.Badge;
 import com.nhom12.enggo_backend.entity.identity.auth.Role;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -79,6 +71,9 @@ public class User {
     @Column(name = "win_streak")
     Integer winStreak;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "badge_rank", nullable = false)
+    Badge badgeRank;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(

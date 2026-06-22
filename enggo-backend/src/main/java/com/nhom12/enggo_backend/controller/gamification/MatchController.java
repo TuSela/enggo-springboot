@@ -40,6 +40,7 @@ public class MatchController {
 
     @MessageMapping("/find_match")
     public void findMatch(Principal principal) {
+        System.out.println("FIND MATCH đã được gọi!!!!!!!!!!!");
         User player2 = userRepository.findByUsername(principal.getName())
                 .orElseThrow(() -> new RuntimeException("Player 2 not found"));
         PvpMatchResponse matchResponse = matchmakingService.findMatch(player2);
