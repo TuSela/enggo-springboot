@@ -38,7 +38,7 @@ public class MatchController {
         this.messagingTemplate = messagingTemplate;
     }
 
-    @MessageMapping("/find_match")
+    @MessageMapping("/find-match")
     public void findMatch(Principal principal) {
         System.out.println("FIND MATCH đã được gọi!!!!!!!!!!!");
         User player2 = userRepository.findByUsername(principal.getName())

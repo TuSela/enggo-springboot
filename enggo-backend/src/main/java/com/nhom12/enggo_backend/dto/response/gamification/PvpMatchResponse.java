@@ -57,6 +57,4 @@ public class PvpMatchResponse {
     LocalDateTime createdAt;
 
     Integer hostUserId;
-
-
 }
