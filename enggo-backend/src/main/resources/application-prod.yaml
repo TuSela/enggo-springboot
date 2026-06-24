@@ -2,7 +2,7 @@ spring:
   application:
     name: enggo-backend
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/tienganh_app}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://enggo-db:3306/tienganh_app?useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&useLegacyDatetimeCode=false}
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: ${SPRING_DATASOURCE_USERNAME:root}
     password: ${SPRING_DATASOURCE_PASSWORD:root}
@@ -18,7 +18,7 @@ spring:
   # 🎯 BỔ SUNG: Cấu hình kết nối Redis cho tính năng Matchmaking
   data:
     redis:
-      host: ${SPRING_REDIS_HOST:localhost}
+      host: ${SPRING_REDIS_HOST:enggo-redis}
       port: ${SPRING_REDIS_PORT:6379}
       # password: ${SPRING_REDIS_PASSWORD:} # Mở ra nếu Redis của bạn đặt mật khẩu
 

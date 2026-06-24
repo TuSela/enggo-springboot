@@ -15,10 +15,10 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.MySQLDialect
 
-  # 🎯 BỔ SUNG: Cấu hình kết nối Redis cho tính năng Matchmaking
+  # 🎯 BỔ SUNG1: Cấu hình kết nối Redis cho tính năng Matchmaking
   data:
     redis:
-      host: ${SPRING_REDIS_HOST:localhost}
+      host: ${SPRING_REDIS_HOST:13.158.23.199}
       port: ${SPRING_REDIS_PORT:6379}
       # password: ${SPRING_REDIS_PASSWORD:} # Mở ra nếu Redis của bạn đặt mật khẩu
 

@@ -1,5 +1,7 @@
 package com.nhom12.enggo_backend.dto.response;
 
+import com.nhom12.enggo_backend.dto.response.gamification.BadgeResponse;
+import com.nhom12.enggo_backend.entity.gamification.Badge;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -23,6 +25,9 @@ public class UserResponse {
     String avatarUrl;
     String status;
     String bio;
+    Integer elo;
     LocalDateTime createdAt;
+    Integer winStreak;
     Set<RoleResponse> roles;
+    BadgeResponse badgeRank;
 }

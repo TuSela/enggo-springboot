@@ -1,6 +1,5 @@
 package com.nhom12.enggo_backend.mapper.exam;
 
-import com.nhom12.enggo_backend.dto.response.UserMinimalResponse;
 import com.nhom12.enggo_backend.dto.response.exam.*;
 import com.nhom12.enggo_backend.dto.response.gamification.ExamPvpDisplayResponse;
 import com.nhom12.enggo_backend.entity.exam.*;

@@ -33,14 +33,14 @@ public class MatchController {
     private final ConcurrentHashMap<Integer, Integer> readyPlayersCount = new ConcurrentHashMap<>();
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
 
-
     public MatchController(MatchmakingService matchmakingService, SimpMessagingTemplate messagingTemplate) {
         this.matchmakingService = matchmakingService;
         this.messagingTemplate = messagingTemplate;
     }
 
-    @MessageMapping("/find_match")
+    @MessageMapping("/find-match")
     public void findMatch(Principal principal) {
+        System.out.println("FIND MATCH đã được gọi!!!!!!!!!!!");
         User player2 = userRepository.findByUsername(principal.getName())
                 .orElseThrow(() -> new RuntimeException("Player 2 not found"));
         PvpMatchResponse matchResponse = matchmakingService.findMatch(player2);
@@ -72,14 +72,17 @@ public class MatchController {
                     readyPlayersCount.remove(matchId);
                 }
             }, 15, TimeUnit.SECONDS); // Ch? d�ng 15 gi�y
-
         } else {
-            messagingTemplate.convertAndSend("/topic/queue-status/" + player2.getId(), "WAITING");
+            messagingTemplate.convertAndSendToUser(
+                    player2.getUsername(), // hoặc principal.getName()
+                    "/queue/queue-status",
+                    "WAITING");
+            System.out.println("User " + player2.getUsername() + " đang xếp hàng chờ (WAITING)...");
         }
     }
-
     @MessageMapping("/join-queue")
     public void joinQueue(Integer matchId, Principal principal) {
+        System.out.println("Ten nguoi san sang: " + principal.getName());
         User player = userRepository.findByUsername(principal.getName())
                 .orElseThrow(() -> new RuntimeException("Player not found"));
 
@@ -107,7 +110,6 @@ public class MatchController {
         matchmakingService.cancelFindMatch(userId);
         messagingTemplate.convertAndSend("/topic/queue-status/" + userId, "CANCELLED");
     }
-
     @MessageMapping("/match/{matchId}/progress")
     public void handleQuizProgress(
             @DestinationVariable Integer matchId,Principal principal,

@@ -2,20 +2,22 @@ package com.nhom12.enggo_backend.service.gamification;
 
 import com.nhom12.enggo_backend.dto.request.exam.ExamAnswerRequest;
 import com.nhom12.enggo_backend.dto.request.exam.ExamSubmitRequest;
-import com.nhom12.enggo_backend.dto.response.gamification.ExamPvpDisplayResponse;
-import com.nhom12.enggo_backend.dto.response.gamification.MatchResultResponse;
-import com.nhom12.enggo_backend.dto.response.gamification.PvpMatchResponse;
-import com.nhom12.enggo_backend.dto.response.gamification.QuizProgressResponse;
+import com.nhom12.enggo_backend.dto.request.exam.RandomBlueprintRequest;
+import com.nhom12.enggo_backend.dto.response.gamification.*;
 import com.nhom12.enggo_backend.entity.exam.Exam;
 import com.nhom12.enggo_backend.entity.exam.ExamAttempt;
 import com.nhom12.enggo_backend.entity.exam.ExamAttemptDetail;
 import com.nhom12.enggo_backend.entity.gamification.PvpMatch;
 import com.nhom12.enggo_backend.entity.identity.User;
 import com.nhom12.enggo_backend.mapper.exam.ExamMapper;
+import com.nhom12.enggo_backend.mapper.gamificationMapper.BadgeMapper;
 import com.nhom12.enggo_backend.repository.exam.ExamAttemptRepository;
 import com.nhom12.enggo_backend.repository.exam.ExamRepository;
 import com.nhom12.enggo_backend.repository.exam.QuestionRepository;
 import com.nhom12.enggo_backend.repository.gamification.PvpMatchRepository;
+import com.nhom12.enggo_backend.repository.gamification.BadgeRepository;
+import com.nhom12.enggo_backend.entity.gamification.Badge;
+import com.nhom12.enggo_backend.dto.request.gamification.UserBadgeRequest;
 import com.nhom12.enggo_backend.repository.UserRepository;
 import com.nhom12.enggo_backend.service.exam.ExamAttemptService;
 import com.nhom12.enggo_backend.service.exam.ScoreCheck;
@@ -27,12 +29,21 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.security.Principal;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class MatchmakingService {
+
+    @Autowired
+    private BadgeRepository badgeRepository;
+
+    @Autowired
+    private UserBadgeService userBadgeService;
+
+
 
     private final StringRedisTemplate redisTemplate;
     private final PvpMatchRepository pvpMatchRepository;
@@ -43,7 +54,6 @@ public class MatchmakingService {
     private ExamMapper examMapper;
     @Autowired
     private ExamAttemptRepository examAttemptRepository;
-
 
     private static final String MATCH_QUEUE_KEY = "pvp:match:queue";
 
@@ -77,8 +87,7 @@ public class MatchmakingService {
         User player1 = userRepository.findById(opponentId)
                 .orElseThrow(() -> new RuntimeException("Player 1 not found"));
 
-
-        Exam randomExam = examRepository.findAll().stream().findFirst()
+        Exam randomExam = examRepository.findRandomExam()
                 .orElseThrow(() -> new RuntimeException("No exam available for PVP match"));
 
         PvpMatch newMatch = PvpMatch.builder()
@@ -95,20 +104,69 @@ public class MatchmakingService {
 
         return PvpMatchResponse.builder()
                 .id(savedMatch.getId())
-                .player1Id(savedMatch.getPlayer1().getId())
-                .player1Username(savedMatch.getPlayer1().getUsername())
-                .player2Id(savedMatch.getPlayer2().getId())
-                .player2Username(savedMatch.getPlayer2().getUsername())
+                .player1Id(player1.getId())
+                .avatarUrlP1(player1.getAvatarUrl())
+                .player1Username(player1.getUsername())
+                .eloP1(player1.getElo())
+                .player2Id(player2.getId())
+                .avatarUrlP2(player2.getAvatarUrl())
+                .player2Username(player2.getUsername())
+                .eloP2(player2.getElo())
                 .examId(savedMatch.getExam().getId())
                 .examTitle(savedMatch.getExam().getTitle())
                 .status(savedMatch.getStatus())
                 .startTime(savedMatch.getStartTime())
                 .build();
     }
+    @Autowired
+    ExamGenerationPVPService examGenerationPVPService;
+    @Transactional
+    public PvpMatchResponse createDirectMatch(Integer player1Id, Integer player2Id, RandomBlueprintRequest request) {
+        System.out.println("Themes: " + request.getThemeIds() +"so luong: "+ request.getTotalQuestions() + "Do kho: "+ request.getDifficulty()+"loai cau hoi: "+ request.getQuestionTypes());
+
+        User player1 = userRepository.findById(player1Id)
+                .orElseThrow(() -> new RuntimeException("Player 1 not found"));
+        User player2 = userRepository.findById(player2Id)
+                .orElseThrow(() -> new RuntimeException("Player 2 not found"));
+
+
+        Exam randomExam = examGenerationPVPService.getOrGenerateExamResponse(request,player1);
+
+        PvpMatch newMatch = PvpMatch.builder()
+                .player1(player1)
+                .player2(player2)
+                .exam(randomExam)
+                .status(String.valueOf(MatchStatus.PLAYING))
+                .player1Score(0)
+                .player2Score(0)
+                .startTime(LocalDateTime.now())
+                .hostUserId(player1Id)
+                .build();
+        PvpMatch savedMatch = pvpMatchRepository.save(newMatch);
+
+        return PvpMatchResponse.builder()
+                .id(savedMatch.getId())
+                .player1Id(player1.getId())
+                .avatarUrlP1(player1.getAvatarUrl())
+                .player1Username(player1.getUsername())
+                .eloP1(player1.getElo())
+                .player2Id(player2.getId())
+                .avatarUrlP2(player2.getAvatarUrl())
+                .player2Username(player2.getUsername())
+                .eloP2(player2.getElo())
+                .examId(savedMatch.getExam().getId())
+                .examTitle(savedMatch.getExam().getTitle())
+                .status(savedMatch.getStatus())
+                .startTime(savedMatch.getStartTime())
+                .hostUserId(player1Id)
+                .difficulty(savedMatch.getExam().getDifficulty())
+                .totalQuestions(savedMatch.getExam().getTotalQuestions())
+                .themeIds(new ArrayList<Integer>())
+                .build();
+    }
 
     public void cancelFindMatch(Integer userId) {
         redisTemplate.opsForSet().remove(MATCH_QUEUE_KEY, String.valueOf(userId));
-
     }
     @Autowired
     ExamAttemptService examAttemptService;
@@ -126,7 +184,7 @@ public class MatchmakingService {
         var question = questionRepository.findById(request.getQuestionId())
                 .orElseThrow(() -> new RuntimeException("Question Not Found"));
 
-        // Ki?m tra c�u h?i c� trong d? thi c?a tr?n d?u kh�ng
+        // Ki?m tra cu h?i c trong d? thi c?a tr?n d?u khng
         boolean isBelong = pvpMatch.getExam().getExamQuestions().stream()
                 .anyMatch(e -> e.getQuestion().getId().equals(question.getId()));
         if (!isBelong) {
@@ -158,12 +216,16 @@ public class MatchmakingService {
                 .build();
     }
     @Transactional
-    // ?? H�m API d�nh ri�ng cho m�n h�nh PvP QuizActivity l?y d?
+    // ?? Hm API dnh ring cho mn hnh PvP QuizActivity l?y d?
     public ExamPvpDisplayResponse startPvpExam (Integer matchId, User playerId) {
-        PvpMatch pvpMatch = pvpMatchRepository.findById(matchId).orElseThrow(() -> new RuntimeException("L?I: Kh�ng t�m th?y PVPMatch : "));
+        // Log start of method for debugging
+        System.out.println("[DEBUG] startPvpExam called with matchId=" + matchId);
+        // Retrieve the match and both participants
+        PvpMatch pvpMatch = pvpMatchRepository.findById(matchId)
+                .orElseThrow(() -> new RuntimeException("L?I: Khng tm th?y PVPMatch : "));
         User player2 = pvpMatch.getPlayer2();
         User player1 = pvpMatch.getPlayer1();
-        var exam = examRepository.findById(pvpMatch.getExam().getId()).orElseThrow(() -> new RuntimeException("L?I: Kh�ng t�m th?y b�i thi (Exam) v?i ID: " + pvpMatch.getId()));
+        var exam = pvpMatch.getExam();
 
         if (!exam.getActive()) {
             throw new IllegalStateException("Exam has been stopped");
@@ -197,6 +259,12 @@ public class MatchmakingService {
         pvpMatch.setPlayer2Attempt(attempt2);
         pvpMatchRepository.save(pvpMatch);
 
+        // Log detailed info for debugging
+        System.out.println("[DEBUG] startPvpExam matchId=" + matchId
+                + " examId=" + exam.getId()
+                + " p1AttemptId=" + attempt.getId()
+                + " p2AttemptId=" + attempt2.getId());
+
         return examMapper.toExamPvpDisplayResponse(exam, attempt, attempt2);
     }
     @Transactional
@@ -220,11 +288,14 @@ public class MatchmakingService {
 
                 details.add(examAttemptService.saveDetail(pvpMatch.getPlayer1Attempt(), question, answer, result));
             }
+            Duration duration = Duration.between(pvpMatch.getStartTime(), LocalDateTime.now());
+            String timeSpent = duration.getSeconds() + "";
             totalScore = totalScore.setScale(2, RoundingMode.HALF_UP);
             pvpMatch.getPlayer1Attempt().setCorrectAnswersCount(correctCount);
             pvpMatch.getPlayer1Attempt().setCompletedAt(LocalDateTime.now());
             pvpMatch.getPlayer1Attempt().setTotalScore(totalScore);
             pvpMatch.getPlayer1Attempt().setComplete(true);
+            pvpMatch.getPlayer1Attempt().setTimeSpent(timeSpent);
             examAttemptRepository.save(pvpMatch.getPlayer1Attempt());
         } else if (pvpMatch.getPlayer2().getId().equals(user.getId())) {
             int correctCount = 0;
@@ -242,11 +313,14 @@ public class MatchmakingService {
 
                 details.add(examAttemptService.saveDetail(pvpMatch.getPlayer2Attempt(), question, answer, result));
             }
+            Duration duration = Duration.between(pvpMatch.getStartTime(), LocalDateTime.now());
+            String timeSpent = duration.getSeconds() + "";
             totalScore = totalScore.setScale(2, RoundingMode.HALF_UP);
             pvpMatch.getPlayer2Attempt().setCorrectAnswersCount(correctCount);
             pvpMatch.getPlayer2Attempt().setCompletedAt(LocalDateTime.now());
             pvpMatch.getPlayer2Attempt().setTotalScore(totalScore);
             pvpMatch.getPlayer2Attempt().setComplete(true);
+            pvpMatch.getPlayer2Attempt().setTimeSpent(timeSpent);
             examAttemptRepository.save(pvpMatch.getPlayer2Attempt());
         }
         pvpMatchRepository.save(pvpMatch);
@@ -255,37 +329,130 @@ public class MatchmakingService {
         }
         return null;
     }
+    @Autowired
+    BadgeMapper badgeMapper;
     private MatchResultResponse finalizeMatch(PvpMatch match) {
         match.setStatus(String.valueOf(MatchStatus.FINISHED));
         match.setEndTime(LocalDateTime.now());
         int score1 = match.getPlayer1Score();
         int score2 = match.getPlayer2Score();
-        Integer winnerId = 0;
+        Integer winnerId = null;
         User player1 = match.getPlayer1();
         User player2 = match.getPlayer2();
-        int eloChange = 25; 
+
+        int oldElo1 = player1.getElo() != null ? player1.getElo() : 75;
+        int oldElo2 = player2.getElo() != null ? player2.getElo() : 75;
+
+        int eloChange = 25;
         if (score1 > score2) {
             winnerId = player1.getId();
             match.setWinner(player1);
             updateElo(player1, player2, eloChange);
             player1.setPvpWins((player1.getPvpWins() == null ? 0 : player1.getPvpWins()) + 1);
+            player1.incrementWinStreak();
+            player2.resetWinStreak();
         } else if (score2 > score1) {
             winnerId = player2.getId();
             match.setWinner(player2);
-            updateElo(player2, player1, eloChange); 
+            updateElo(player2, player1, eloChange);
             player2.setPvpWins((player2.getPvpWins() == null ? 0 : player2.getPvpWins()) + 1);
+            player1.resetWinStreak();
+            player2.incrementWinStreak();
         } else {
             updateElo(player1, player2, 0);
         }
-        userRepository.save(player1); userRepository.save(player2);
+
+        player1.setBadgeRank(awardBadgeIfEligible(player1));
+        player2.setBadgeRank(awardBadgeIfEligible(player2));
+        userRepository.save(player1);
+        userRepository.save(player2);
+        // Award badge based on updated elo
+        BadgeResponse badgeResponse =badgeMapper.toBadgeResponse(player1.getBadgeRank());
+
         pvpMatchRepository.save(match);
-        return MatchResultResponse.builder().matchId(match.getId()).winnerId(winnerId).player1Score(score1).player2Score(score2).eloChange(eloChange).status("FINISHED").build();
+
+        var p1Result = MatchResultResponse.PlayerResult.builder()
+                .userName(player1.getUsername())
+                .level(player1.getLevel())
+                .avatarUrl(player1.getAvatarUrl())
+                .playerScore(score1)
+                .eloChange(player1.getElo() - oldElo1)
+                .correctAnswersCount(match.getPlayer1Attempt().getCorrectAnswersCount())
+                .elo(player1.getElo())
+                .duration(match.getPlayer1Attempt().getTimeSpent())
+                .totalQuestions(match.getExam().getTotalQuestions())
+                .WinStreak(player1.getWinStreak())
+                .badgeRank(badgeResponse)
+                .build();
+        BadgeResponse badgeResponse2 =badgeMapper.toBadgeResponse(player2.getBadgeRank());
+        var p2Result = MatchResultResponse.PlayerResult.builder()
+                .userName(player2.getUsername())
+                .level(player2.getLevel())
+                .avatarUrl(player2.getAvatarUrl())
+                .playerScore(score2)
+                .eloChange(player2.getElo() - oldElo2)
+                .correctAnswersCount(match.getPlayer2Attempt().getCorrectAnswersCount())
+                .elo(player2.getElo())
+                .duration(match.getPlayer2Attempt().getTimeSpent())
+                .totalQuestions(match.getExam().getTotalQuestions())
+                .WinStreak(player2.getWinStreak())
+                .badgeRank(badgeResponse2)
+                .build();
+
+        return MatchResultResponse.builder()
+                .matchId(match.getId())
+                .winnerId(winnerId)
+                .player1Id(player1.getId())
+                .player2Id(player2.getId())
+                .player1(p1Result)
+                .player2(p2Result)
+                .status("FINISHED")
+                .build();
+    }
+    public String getPlayer1Username(Integer matchId) {
+        PvpMatch match = pvpMatchRepository.findById(matchId)
+                .orElseThrow(() -> new RuntimeException("Match not found"));
+        return match.getPlayer1().getUsername();
+    }
+
+    public String getPlayer2Username(Integer matchId) {
+        PvpMatch match = pvpMatchRepository.findById(matchId)
+                .orElseThrow(() -> new RuntimeException("Match not found"));
+        return match.getPlayer2().getUsername();
     }
 
     private void updateElo(User winner, User loser, int change) {
-        if (winner.getElo() == null) winner.setElo(1000);
-        if (loser.getElo() == null) loser.setElo(1000);
+        if (winner.getElo() == null) winner.setElo(75);
+        if (loser.getElo() == null) loser.setElo(75);
         winner.setElo(winner.getElo() + change);
         loser.setElo(Math.max(0, loser.getElo() - change));
+
     }
-}
+        // Award badge based on current elo (every 100 points)
+        private Badge awardBadgeIfEligible(User user) {
+
+            int rankLevel = user.getElo() / 100; // integer division
+            // Define badge names in order of ranks (starting from rank 0 = no badge)
+            String[] badgeNames = new String[]{
+                    "bronze_1.0",
+                    "bronze_2.0",
+                    "bronze_3.0",
+                    "silver_1.0",
+                    "silver_2.0",
+                    "silver_3.0",
+                    "gold_1.0",
+                    "gold_2.0",
+                    "gold_3.0",
+                    "challenger_0.0"
+            };
+            // Clamp index to max badge
+            int idx = Math.min(rankLevel, badgeNames.length - 1);
+            String badgeName = badgeNames[idx];
+            // Find badge entity
+            System.out.println(badgeName);
+           return badgeRepository.findByBadgeName(badgeName);
+        }
+    }
+
+
+

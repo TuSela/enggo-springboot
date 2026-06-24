@@ -14,6 +14,8 @@ import java.util.Optional;
 
 @Repository
 public interface ExamRepository extends JpaRepository<Exam,Integer> {
+    @Query(value = "SELECT * FROM exams WHERE is_active = true ORDER BY RAND() LIMIT 1", nativeQuery = true)
+    Optional<Exam> findRandomExam();
     @Query("""
     SELECT DISTINCT e FROM Exam e
     LEFT JOIN FETCH e.examQuestions eq

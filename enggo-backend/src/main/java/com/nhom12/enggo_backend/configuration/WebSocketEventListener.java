@@ -1,42 +1,55 @@
 package com.nhom12.enggo_backend.configuration;
 
-import com.nhom12.enggo_backend.service.UserService;
+import com.nhom12.enggo_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Configuration;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
-import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
-import java.security.Principal;
-@Configuration
+@Slf4j
 @Component
 @RequiredArgsConstructor
+
 public class WebSocketEventListener {
 
-    private final UserService userStatusService;
+    private final UserRepository userRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
+    // Tự động bắn khi client kết nối WebSocket thành công
     @EventListener
-    public void handleWebSocketConnectListener(SessionConnectedEvent event) {
-        StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
+    public void handleConnect(SessionConnectedEvent event) {
+        String username = event.getUser() != null ? event.getUser().getName() : null;
+        if (username == null) return;
 
-        // Lấy thông tin User đã được xác thực qua token JWT trước đó
-        Principal principal = headerAccessor.getUser();
-        String sessionId = headerAccessor.getSessionId();
+        userRepository.findByUsername(username).ifPresent(user -> {
+            user.setStatus("ONLINE");
+            userRepository.save(user);
+            log.info("{} is ONLINE", username);
 
-        if (principal != null) {
-            String userId = principal.getName(); // Thường là ID hoặc Username tùy cấu hình Security của nhóm
-            userStatusService.userOnline(userId, sessionId);
-        }
+            // Thông báo tới tất cả client đang lắng nghe /topic/status
+            messagingTemplate.convertAndSend("/topic/status", new StatusPayload(user.getId(), "ONLINE"));
+        });
     }
 
+    // Tự động bắn khi client ngắt kết nối (đóng app, mất mạng, logout)
     @EventListener
-    public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) {
-        StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
-        String sessionId = headerAccessor.getSessionId();
+    public void handleDisconnect(SessionDisconnectEvent event) {
+        String username = event.getUser() != null ? event.getUser().getName() : null;
+        if (username == null) return;
 
-        // Gửi lệnh xóa khỏi danh sách Online
-        userStatusService.userOffline(sessionId);
+        userRepository.findByUsername(username).ifPresent(user -> {
+            user.setStatus("OFFLINE");
+            userRepository.save(user);
+            log.info("{} is OFFLINE", username);
+
+            // Thông báo tới tất cả client
+            messagingTemplate.convertAndSend("/topic/status", new StatusPayload(user.getId(), "OFFLINE"));
+        });
     }
+
+    // DTO nhỏ gọn gửi qua WebSocket
+    public record StatusPayload(Integer userId, String status) {}
 }

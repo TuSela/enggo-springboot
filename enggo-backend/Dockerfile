@@ -23,6 +23,6 @@ USER spring:spring
 
 EXPOSE 8080
 
-ENV JAVA_OPTS=""
+ENV JAVA_OPTS="-Xms128m -Xmx256m -Dspring.profiles.active=prod -Djava.net.preferIPv4Stack=true"
 
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
