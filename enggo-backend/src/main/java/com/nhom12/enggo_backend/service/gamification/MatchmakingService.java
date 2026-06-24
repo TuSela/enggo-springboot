@@ -3,16 +3,14 @@ package com.nhom12.enggo_backend.service.gamification;
 import com.nhom12.enggo_backend.dto.request.exam.ExamAnswerRequest;
 import com.nhom12.enggo_backend.dto.request.exam.ExamSubmitRequest;
 import com.nhom12.enggo_backend.dto.request.exam.RandomBlueprintRequest;
-import com.nhom12.enggo_backend.dto.response.gamification.ExamPvpDisplayResponse;
-import com.nhom12.enggo_backend.dto.response.gamification.MatchResultResponse;
-import com.nhom12.enggo_backend.dto.response.gamification.PvpMatchResponse;
-import com.nhom12.enggo_backend.dto.response.gamification.QuizProgressResponse;
+import com.nhom12.enggo_backend.dto.response.gamification.*;
 import com.nhom12.enggo_backend.entity.exam.Exam;
 import com.nhom12.enggo_backend.entity.exam.ExamAttempt;
 import com.nhom12.enggo_backend.entity.exam.ExamAttemptDetail;
 import com.nhom12.enggo_backend.entity.gamification.PvpMatch;
 import com.nhom12.enggo_backend.entity.identity.User;
 import com.nhom12.enggo_backend.mapper.exam.ExamMapper;
+import com.nhom12.enggo_backend.mapper.gamificationMapper.BadgeMapper;
 import com.nhom12.enggo_backend.repository.exam.ExamAttemptRepository;
 import com.nhom12.enggo_backend.repository.exam.ExamRepository;
 import com.nhom12.enggo_backend.repository.exam.QuestionRepository;
@@ -331,7 +329,8 @@ public class MatchmakingService {
         }
         return null;
     }
-
+    @Autowired
+    BadgeMapper badgeMapper;
     private MatchResultResponse finalizeMatch(PvpMatch match) {
         match.setStatus(String.valueOf(MatchStatus.FINISHED));
         match.setEndTime(LocalDateTime.now());
@@ -368,7 +367,7 @@ public class MatchmakingService {
         userRepository.save(player1);
         userRepository.save(player2);
         // Award badge based on updated elo
-
+        BadgeResponse badgeResponse =badgeMapper.toBadgeResponse(player1.getBadgeRank());
 
         pvpMatchRepository.save(match);
 
@@ -383,9 +382,9 @@ public class MatchmakingService {
                 .duration(match.getPlayer1Attempt().getTimeSpent())
                 .totalQuestions(match.getExam().getTotalQuestions())
                 .WinStreak(player1.getWinStreak())
-                .badgeRank(player1.getBadgeRank().getBadgeName())
+                .badgeRank(badgeResponse)
                 .build();
-
+        BadgeResponse badgeResponse2 =badgeMapper.toBadgeResponse(player2.getBadgeRank());
         var p2Result = MatchResultResponse.PlayerResult.builder()
                 .userName(player2.getUsername())
                 .level(player2.getLevel())
@@ -397,7 +396,7 @@ public class MatchmakingService {
                 .duration(match.getPlayer2Attempt().getTimeSpent())
                 .totalQuestions(match.getExam().getTotalQuestions())
                 .WinStreak(player2.getWinStreak())
-                .badgeRank(player2.getBadgeRank().getBadgeName())
+                .badgeRank(badgeResponse2)
                 .build();
 
         return MatchResultResponse.builder()

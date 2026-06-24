@@ -36,6 +36,6 @@ public class MatchResultResponse {
         String duration;
         Integer WinStreak;
         Integer elo;
-        String badgeRank;
+        BadgeResponse badgeRank;
     }
 }
