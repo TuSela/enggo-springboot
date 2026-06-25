@@ -11,12 +11,14 @@ import com.nhom12.enggo_backend.dto.response.gamification.BadgeResponse;
 import com.nhom12.enggo_backend.entity.gamification.Badge;
 import com.nhom12.enggo_backend.entity.identity.auth.Role;
 import com.nhom12.enggo_backend.entity.identity.User;
+import com.nhom12.enggo_backend.entity.social.Friend;
 import com.nhom12.enggo_backend.exception.AppException;
 import com.nhom12.enggo_backend.exception.ErrorCode;
 import com.nhom12.enggo_backend.mapper.UserMapper;
 import com.nhom12.enggo_backend.mapper.gamificationMapper.BadgeMapper;
 import com.nhom12.enggo_backend.repository.RoleRepository;
 import com.nhom12.enggo_backend.repository.UserRepository;
+import com.nhom12.enggo_backend.repository.social.FriendRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -36,7 +38,9 @@ import org.springframework.util.CollectionUtils;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -65,7 +69,8 @@ public class UserService {
 
         return userMapper.toUserResponse(user);
     }
-
+    @Autowired
+    FriendRepository friendRepository;
     public UserResponse getMyInfo() {
         var context = SecurityContextHolder.getContext();
         String name = context.getAuthentication().getName();
@@ -77,31 +82,59 @@ public class UserService {
 
     public List<UserMinimalResponse> searchUsersByUsername(String username) {
         String keyword = username == null ? "" : username.trim();
-
         if (keyword.isEmpty()) {
             return List.of();
         }
 
+        // 1. Lấy thông tin người dùng hiện tại đang đăng nhập
+        var context = SecurityContextHolder.getContext();
+        String currentUsername = context.getAuthentication().getName();
+
+        // Tránh truyền null vào orElseThrow kẻo bị NullPointerException, hãy dùng Supplier Lambda hoặc Custom Exception
+        User currentUser = userRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new RuntimeException("Current user not found"));
+
+        // 2. Lấy danh sách bản ghi bạn bè từ FriendRepository
+        List<Friend> friendList = friendRepository.findAllByUser(currentUser);
+        // Lưu ý: Nếu DB của bạn lưu quan hệ 2 chiều tự động thì chỉ cần tìm theo user1.
+        // Nếu lưu 1 dòng duy nhất cho mối quan hệ, bạn cần gom cả friendRepository.findAllByUser2(currentUser) nữa nhé.
+
+        // 3. Gom tất cả ID của những người ĐÃ LÀ BẠN vào một Set để tối ưu tốc độ kiểm tra (O(1))
+        Set<Integer> existingFriendIds = friendList.stream()
+                .map(friend -> {
+                    // Nếu mình là user1 thì người bạn là user2, ngược lại người bạn là user1
+                    if (friend.getUser1().getId().equals(currentUser.getId())) {
+                        return friend.getUser2().getId();
+                    } else {
+                        return friend.getUser1().getId();
+                    }
+                })
+                .collect(Collectors.toSet());
+
+        // 4. Tiến hành tìm kiếm và lọc kết quả
         return userRepository.findByUsernameContainingIgnoreCase(keyword)
                 .stream()
+                // LỌC: 1. Loại bỏ chính bản thân người đăng nhập
+                //      2. Loại bỏ những người có ID đã nằm trong danh sách bạn bè (existingFriendIds)
+                .filter(user -> !user.getUsername().equalsIgnoreCase(currentUsername)
+                        && !existingFriendIds.contains(user.getId()))
                 .map(userMapper::toUserMinimalResponse)
                 .toList();
     }
 
     @PostAuthorize("returnObject.username == authentication.name")
-    public UserResponse updateUser(Integer userId, UserUpdateRequest request) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
-
+    public UserResponse updateUser(UserUpdateRequest request) {
+        var context = SecurityContextHolder.getContext();
+        String name = context.getAuthentication().getName();
+        User user = userRepository.findByUsername(name).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
         userMapper.updateUser(user, request);
         if (Objects.nonNull(request.getPassword()) && !request.getPassword().isBlank()) {
             user.setPassword(passwordEncoder.encode(request.getPassword()));
         }
-
         if (!CollectionUtils.isEmpty(request.getRoles())) {
             var roles = roleRepository.findByRoleNameIn(request.getRoles());
             user.setRoles(new HashSet<>(roles));
         }
-
         return userMapper.toUserResponse(userRepository.save(user));
     }
 
