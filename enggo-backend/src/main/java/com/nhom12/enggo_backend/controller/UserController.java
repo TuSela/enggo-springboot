@@ -98,10 +98,10 @@ public class UserController {
         return ApiResponse.<String>builder().result("User has been deleted").build();
     }
 
-    @PutMapping("/{userId}")
-    ApiResponse<UserResponse> updateUser(@PathVariable Integer userId, @RequestBody UserUpdateRequest request) {
+    @PutMapping({"/my-info","/me"})
+    ApiResponse<UserResponse> updateUser(@RequestBody UserUpdateRequest request) {
         return ApiResponse.<UserResponse>builder()
-                .result(userService.updateUser(userId, request))
+                .result(userService.updateUser(request))
                 .build();
     }
     @PostMapping("/uploadAvatar")
