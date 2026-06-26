@@ -5,11 +5,14 @@ import com.nhom12.enggo_backend.dto.request.exam.ThemeRequest;
 import com.nhom12.enggo_backend.dto.response.exam.ThemeResponse;
 import com.nhom12.enggo_backend.entity.exam.Theme;
 import com.nhom12.enggo_backend.service.exam.ThemeService;
+import com.nhom12.enggo_backend.service.upload.UploadsService;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -73,5 +76,21 @@ public class ThemeController {
     ApiResponse<String> disableTheme(@PathVariable("id")  Integer id) {
         themeService.disableTheme(id);
         return ApiResponse.<String>builder().result("Theme has been disabled").build();
+    }
+    private  final UploadsService uploadsService;
+    @PutMapping("/{id}/uploadImage")
+    public ApiResponse<String> uploadImage(@RequestParam("file") MultipartFile file, @PathVariable("id")  Integer id) throws IOException {
+
+        // 1. Upload ảnh lê
+        // n Cloud
+        String imageUrl = uploadsService.uploadImage(file);
+
+        // 2. Cập nhật đường dẫn ảnh vào Database cho User tương ứng
+        themeService.uploadImageTheme(imageUrl,id);
+
+        return ApiResponse.<String>builder()
+                .result(imageUrl)
+                .message("Cập nhật ảnh đại diện thành công")
+                .build();
     }
 }

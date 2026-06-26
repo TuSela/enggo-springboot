@@ -98,4 +98,9 @@ public class ThemeService {
         theme.setActive(false);
         themeRepository.save(theme);
     }
+    public void uploadImageTheme(String url,Integer id){
+        Theme theme = themeRepository.findById(id).orElseThrow(RuntimeException::new);
+        theme.setThemeImage(url);
+        themeRepository.save(theme);
+    }
 }

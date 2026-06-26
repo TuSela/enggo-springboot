@@ -1,6 +1,8 @@
 package com.nhom12.enggo_backend.entity.identity;
 
 import com.nhom12.enggo_backend.entity.gamification.Badge;
+import com.nhom12.enggo_backend.entity.gamification.Mission;
+import com.nhom12.enggo_backend.entity.gamification.MissionProgress;
 import com.nhom12.enggo_backend.entity.identity.auth.Role;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -81,10 +83,21 @@ public class User {
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id"))
     Set<Role> roles;
+
     public void incrementWinStreak() {
         this.winStreak = this.winStreak + 1;
     }
     public void resetWinStreak(){
         this.winStreak = 0;
+    }
+
+    /**
+     * Add experience points to the user.
+     */
+    public void addExp(int amount) {
+        if (this.exp == null) {
+            this.exp = 0;
+        }
+        this.exp += amount;
     }
 }

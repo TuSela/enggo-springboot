@@ -40,12 +40,20 @@ import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.StringJoiner;
 import java.util.UUID;
+import org.springframework.data.domain.PageRequest;
+import com.nhom12.enggo_backend.entity.gamification.Mission;
+import com.nhom12.enggo_backend.entity.gamification.MissionProgress;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AuthenticationService {
+    // Repositories needed for first‑login mission assignment
+    final com.nhom12.enggo_backend.repository.gamification.MissionProgressRepository missionProgressRepository;
+    final com.nhom12.enggo_backend.repository.gamification.MissionRepository missionRepository;
+    // Number of random missions to assign on first login each day
+    private static final int MISSIONS_PER_LOGIN = 3;
     UserRepository userRepository;
     InvalidatedTokenRepository invalidatedTokenRepository;
 
@@ -81,8 +89,40 @@ public class AuthenticationService {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
         boolean authenticated = passwordEncoder.matches(request.getPassword(), user.getPassword());
-
         if (!authenticated) throw new AppException(ErrorCode.UNAUTHENTICATED);
+
+        // ---- Assign daily random missions on first login of the day ----
+        // Determine today's start/end
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        java.time.LocalDateTime startOfDay = now.withHour(0).withMinute(0).withSecond(0).withNano(0);
+        java.time.LocalDateTime endOfDay = startOfDay.plusDays(1);
+        // 1️⃣ Mark any unfinished progress from previous days as FAILED (or EXPIRED)
+        java.util.List<com.nhom12.enggo_backend.entity.gamification.MissionProgress> unfinished =
+                missionProgressRepository.findByUserIdAndDeadlineBeforeAndStatusNot(user.getId(), startOfDay, "CLAIMED");
+        for (com.nhom12.enggo_backend.entity.gamification.MissionProgress p : unfinished) {
+            p.setStatus("FAILED");
+            missionProgressRepository.save(p);
+        }
+        // 2️⃣ Check if the user already has any mission progress for today
+        boolean alreadyHas = !missionProgressRepository
+                .findByUserIdAndDeadlineBetween(user.getId(), startOfDay, endOfDay)
+                .isEmpty();
+        if (!alreadyHas) {
+            // Fetch random missions for today
+            java.util.List<com.nhom12.enggo_backend.entity.gamification.Mission> randomMissions =
+                    missionRepository.findRandomMissions(org.springframework.data.domain.PageRequest.of(0, MISSIONS_PER_LOGIN));
+            for (com.nhom12.enggo_backend.entity.gamification.Mission mission : randomMissions) {
+                com.nhom12.enggo_backend.entity.gamification.MissionProgress progress = com.nhom12.enggo_backend.entity.gamification.MissionProgress.builder()
+                        .user(user)
+                        .mission(mission)
+                        .currentValue(0)
+                        .status("IN_PROGRESS")
+                        .deadline(endOfDay)
+                        .build();
+                missionProgressRepository.save(progress);
+            }
+        }
+        // ------------------------------------------------------------
 
         var token = generateToken(user);
         return AuthenticationResponse.builder().token(token).authenticated(true).build();

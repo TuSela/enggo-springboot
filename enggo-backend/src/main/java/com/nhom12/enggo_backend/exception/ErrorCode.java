@@ -22,6 +22,7 @@ public enum ErrorCode {
     BADGE_REQUEST_INVALID(1013, "Badge request must be valid JSON", HttpStatus.BAD_REQUEST),
     FILE_TOO_LARGE(1002, "File size exceeds the limit (Max: 5MB)", HttpStatus.PAYLOAD_TOO_LARGE),
     UNSUPPORTED_FILE_TYPE(1003, "Only JPEG, PNG, and WEBP are supported", HttpStatus.UNSUPPORTED_MEDIA_TYPE),
+    INVALID_OPERATION(1014, "Invalid operation", HttpStatus.BAD_REQUEST),
     FILE_EMPTY(1004, "Please select a file to upload", HttpStatus.BAD_REQUEST),
     UPLOAD_FAILED(1005, "Cloudinary upload failed", HttpStatus.INTERNAL_SERVER_ERROR),
     FRIEND_REQUEST_EXISTED(1011, "Lời mời kết bạn đã được gửi trước đó", HttpStatus.BAD_REQUEST),

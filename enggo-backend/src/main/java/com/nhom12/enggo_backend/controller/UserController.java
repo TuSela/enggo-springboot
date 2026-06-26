@@ -33,8 +33,6 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
 public class UserController {
-
-
     @GetMapping("/top-elo")
     ApiResponse<com.nhom12.enggo_backend.dto.response.TopUsersResponse> getTopElo() {
         return ApiResponse.<com.nhom12.enggo_backend.dto.response.TopUsersResponse>builder()

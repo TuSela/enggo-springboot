@@ -10,13 +10,20 @@ import com.nhom12.enggo_backend.dto.request.exam.MatchingSubmitRequest;
 import com.nhom12.enggo_backend.dto.response.PageResponse;
 import com.nhom12.enggo_backend.dto.response.exam.*;
 import com.nhom12.enggo_backend.dto.response.gamification.LevelInfoResponse;
+import com.nhom12.enggo_backend.dto.response.gamification.MissionProgressResponse;
 import com.nhom12.enggo_backend.entity.exam.*;
+import com.nhom12.enggo_backend.entity.gamification.MissionProgress;
 import com.nhom12.enggo_backend.entity.identity.User;
 import com.nhom12.enggo_backend.mapper.exam.ExamAttemptMapper;
 import com.nhom12.enggo_backend.repository.UserRepository;
 import com.nhom12.enggo_backend.repository.exam.*;
+import com.nhom12.enggo_backend.repository.gamification.MissionProgressRepository;
 import com.nhom12.enggo_backend.service.gamification.LevelService;
+import com.nhom12.enggo_backend.service.gamification.UserMissionService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -24,13 +31,19 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class ExamAttemptService {
+
+    private static final Logger log = LoggerFactory.getLogger(ExamAttemptService.class);
+
     private final ExamAttemptRepository examAttemptRepository;
     private final UserRepository userRepository;
     private final ExamRepository examRepository;
@@ -111,6 +124,8 @@ public class ExamAttemptService {
         attempt.setBonusExp(bonusExp);
         examAttemptRepository.save(attempt);
 
+        checkMissionExam(attempt);
+
         examAttemptDetailRepository.saveAll(details);
 
         return examAttemptMapper.toExamSubmitResponse(attempt);
@@ -152,7 +167,7 @@ public class ExamAttemptService {
             }
         };
 
-        return java.util.concurrent.ThreadLocalRandom.current().nextInt(minBonusExp, maxBonusExp + 1);
+        return ThreadLocalRandom.current().nextInt(minBonusExp, maxBonusExp + 1);
     }
 
     private ScoreCheck scoreMultipleChoice (Question question, ExamAnswerRequest answer, Exam exam) {
@@ -460,4 +475,60 @@ public class ExamAttemptService {
 
         return PageResponse.of(responsePage);
     }
+    @Autowired
+    private UserMissionService userMissionService;
+    private final MissionProgressRepository progressRepository;
+    
+    public void checkMissionExam(ExamAttempt attempt) {
+        // 1️⃣ Lấy user hiện tại
+        String username = Objects.requireNonNull(
+                SecurityContextHolder.getContext().getAuthentication()).getName();
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Username not found"));
+
+        // 2️⃣ Khung thời gian ngày hiện tại
+        LocalDate today = LocalDate.now();
+        LocalDateTime startOfDay = today.atStartOfDay();          // 00:00
+        LocalDateTime endOfDay   = today.atTime(LocalTime.MAX); // 23:59:59.999...
+
+        // 3️⃣ Các missionType cần kiểm tra
+        List<String> targetTypes = List.of("QUIZ", "QUIZ_SPEED", "QUIZ_STREAK");
+
+        // 4️⃣ Lấy tất cả progress của hôm nay và lọc theo missionType
+        List<MissionProgress> todayProgress = progressRepository
+                .findByUserIdAndDeadlineBetween(user.getId(), startOfDay, endOfDay)
+                .stream()
+                .filter(p -> p.getMission() != null &&
+                        targetTypes.contains(p.getMission().getMissionType()))
+                .collect(Collectors.toList());
+
+        // Logger variable removed – will use class‑level logger
+        if (todayProgress.isEmpty()) {
+            log.debug("User {} has no QUIZ‑related missions for today.", user.getUsername());
+            return;
+        }
+
+        // 5️⃣ Giá trị tăng (ở đây +1, có thể thay bằng attempt.getScore() …)
+        int increment = 1;
+
+        // 6️⃣ Cập nhật tiến độ qua service đã có
+        for (MissionProgress mp : todayProgress) {
+            try {
+                userMissionService.incrementProgress(user.getId(),
+                        mp.getMission().getId(),
+                        increment);
+                log.debug("Incremented mission {} (type={}) for user {} by {}.",
+                        mp.getMission().getId(),
+                        mp.getMission().getMissionType(),
+                        user.getUsername(),
+                        increment);
+            } catch (Exception e) {
+                // Đừng để một lỗi phá hỏng toàn bộ quá trình
+                log.warn("Failed to increment mission {} for user {}: {}",
+                        mp.getMission().getId(), user.getUsername(), e.getMessage());
+            }
+        }
+    }
 }
+

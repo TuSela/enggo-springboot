@@ -7,20 +7,19 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
-import java.time.LocalDateTime;
-
+/**
+ * Response returned after a user successfully claims a mission reward.
+ */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class MissionProgressResponse {
-    Integer id;
-    Integer userId;
-    String username;
-    MissionResponse missionResponse;
-    Integer currentValue;
+public class ClaimRewardResponse {
+    /** Amount of experience awarded for the mission */
+    Integer expAwarded;
+    /** User's total experience after the award */
+    Integer newTotalExp;
+    /** New status of the mission progress (always CLAIMED) */
     String status;
-    LocalDateTime deadline;
-    LocalDateTime updatedAt;
 }

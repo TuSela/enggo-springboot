@@ -49,7 +49,7 @@ public interface QuestionMapper {
         return tags.stream()
                 .map(t -> new ThemeResponse(
                         t.getTheme().getId(),
-                        t.getTheme().getThemeName()))
+                        t.getTheme().getThemeName(),t.getTheme().getThemeImage()))
                 .distinct().toList();
     }
 

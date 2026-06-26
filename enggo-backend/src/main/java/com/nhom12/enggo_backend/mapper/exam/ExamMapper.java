@@ -20,7 +20,7 @@ public interface ExamMapper {
         return examTags.stream()
                 .map(t-> new ThemeResponse(
                         t.getTheme().getId(),
-                        t.getTheme().getThemeName()))
+                        t.getTheme().getThemeName(),t.getTheme().getThemeName()))
                 .distinct().toList();
     }
 

@@ -2,6 +2,7 @@ package com.nhom12.enggo_backend.service.gamification;
 
 import com.nhom12.enggo_backend.dto.request.gamification.MissionProgressRequest;
 import com.nhom12.enggo_backend.dto.response.gamification.MissionProgressResponse;
+import com.nhom12.enggo_backend.dto.response.gamification.MissionResponse;
 import com.nhom12.enggo_backend.entity.gamification.Mission;
 import com.nhom12.enggo_backend.entity.gamification.MissionProgress;
 import com.nhom12.enggo_backend.entity.identity.User;
@@ -15,11 +16,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import org.springframework.data.domain.PageRequest;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class MissionProgressService {
+    private static final int MISSIONS_PER_LOGIN = 3;
     private final MissionProgressRepository missionProgressRepository;
     private final UserRepository userRepository;
     private final MissionRepository missionRepository;
@@ -57,8 +60,7 @@ public class MissionProgressService {
                 .id(progress.getId())
                 .userId(progress.getUser().getId())
                 .username(progress.getUser().getUsername())
-                .missionId(progress.getMission().getId())
-                .missionTitle(progress.getMission().getTitle())
+                .missionResponse(toMissionResponse(progress.getMission()))
                 .currentValue(progress.getCurrentValue())
                 .status(progress.getStatus())
                 .deadline(progress.getDeadline())
@@ -76,5 +78,19 @@ public class MissionProgressService {
 
     private Mission findMission(Integer id) {
         return missionRepository.findById(id).orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND));
+    }
+    private MissionResponse toMissionResponse(Mission mission) {
+        return MissionResponse.builder()
+                .id(mission.getId())
+                .title(mission.getTitle())
+                .description(mission.getDescription())
+                .rewardExp(mission.getRewardExp())
+                .missionType(mission.getMissionType())
+                .targetValue(mission.getTargetValue())
+                .missionKey(mission.getMissionKey())
+                .timeLimitHours(mission.getTimeLimitHours())
+                .status(mission.getStatus())
+                .createdAt(mission.getCreatedAt())
+                .build();
     }
 }

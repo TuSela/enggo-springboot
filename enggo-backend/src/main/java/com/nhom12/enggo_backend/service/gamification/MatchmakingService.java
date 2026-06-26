@@ -7,6 +7,7 @@ import com.nhom12.enggo_backend.dto.response.gamification.*;
 import com.nhom12.enggo_backend.entity.exam.Exam;
 import com.nhom12.enggo_backend.entity.exam.ExamAttempt;
 import com.nhom12.enggo_backend.entity.exam.ExamAttemptDetail;
+import com.nhom12.enggo_backend.entity.gamification.MissionProgress;
 import com.nhom12.enggo_backend.entity.gamification.PvpMatch;
 import com.nhom12.enggo_backend.entity.identity.User;
 import com.nhom12.enggo_backend.mapper.exam.ExamMapper;
@@ -14,6 +15,7 @@ import com.nhom12.enggo_backend.mapper.gamificationMapper.BadgeMapper;
 import com.nhom12.enggo_backend.repository.exam.ExamAttemptRepository;
 import com.nhom12.enggo_backend.repository.exam.ExamRepository;
 import com.nhom12.enggo_backend.repository.exam.QuestionRepository;
+import com.nhom12.enggo_backend.repository.gamification.MissionProgressRepository;
 import com.nhom12.enggo_backend.repository.gamification.PvpMatchRepository;
 import com.nhom12.enggo_backend.repository.gamification.BadgeRepository;
 import com.nhom12.enggo_backend.entity.gamification.Badge;
@@ -21,8 +23,12 @@ import com.nhom12.enggo_backend.dto.request.gamification.UserBadgeRequest;
 import com.nhom12.enggo_backend.repository.UserRepository;
 import com.nhom12.enggo_backend.service.exam.ExamAttemptService;
 import com.nhom12.enggo_backend.service.exam.ScoreCheck;
+import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,42 +36,114 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.security.Principal;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class MatchmakingService {
 
-    @Autowired
-    private BadgeRepository badgeRepository;
+    private final BadgeRepository badgeRepository;
+    private final UserBadgeService userBadgeService;
+    private final UserMissionService userMissionService;
+    private final MissionProgressRepository progressRepository;
+    private static final Logger log = LoggerFactory.getLogger(MatchmakingService.class);
 
-    @Autowired
-    private UserBadgeService userBadgeService;
+    public void checkMissionExam(PvpMatch pvpMatch) {
+        LocalDate today = LocalDate.now();
+        LocalDateTime startOfDay = today.atStartOfDay();          // 00:00
+        LocalDateTime endOfDay   = today.atTime(LocalTime.MAX); // 23:59:59.999...
 
+        // 3️⃣ Các missionType cần kiểm tra
+        List<String> targetTypes = List.of("PVP","PVP-FRIEND","PVP_PERFECT_SCORE","PVP_SPEED","PVP_STREAK");
+
+        // 4️⃣ Lấy tất cả progress của hôm nay và lọc theo missionType
+        List<MissionProgress> todayProgress = progressRepository
+                .findByUserIdAndDeadlineBetween(pvpMatch.getPlayer1().getId(), startOfDay, endOfDay)
+                .stream()
+                .filter(p -> p.getMission() != null &&
+                        targetTypes.contains(p.getMission().getMissionType()))
+                .collect(Collectors.toList());
+
+        // Logger variable removed – will use class‑level logger
+        if (todayProgress.isEmpty()) {
+            log.debug("User {} has no QUIZ‑related missions for today.", pvpMatch.getPlayer1().getUsername());
+            return;
+        }
+
+        // 5️⃣ Giá trị tăng (ở đây +1, có thể thay bằng attempt.getScore() …)
+        int increment = 1;
+
+        // 6️⃣ Cập nhật tiến độ qua service đã có
+        for (MissionProgress mp : todayProgress) {
+            try {
+                userMissionService.incrementProgress(pvpMatch.getPlayer1().getId(),
+                        mp.getMission().getId(),
+                        increment);
+                log.debug("Incremented mission {} (type={}) for user {} by {}.",
+                        mp.getMission().getId(),
+                        mp.getMission().getMissionType(),
+                        pvpMatch.getPlayer1().getUsername(),
+                        increment);
+            } catch (Exception e) {
+                // Đừng để một lỗi phá hỏng toàn bộ quá trình
+                log.warn("Failed to increment mission {} for user {}: {}",
+                        mp.getMission().getId(), pvpMatch.getPlayer1().getUsername(), e.getMessage());
+            }
+        }
+        List<MissionProgress> todayProgress2 = progressRepository
+                .findByUserIdAndDeadlineBetween(pvpMatch.getPlayer2().getId(), startOfDay, endOfDay)
+                .stream()
+                .filter(p -> p.getMission() != null &&
+                        targetTypes.contains(p.getMission().getMissionType()))
+                .collect(Collectors.toList());
+
+        // Logger variable removed – will use class‑level logger
+        if (todayProgress2.isEmpty()) {
+            log.debug("User {} has no QUIZ‑related missions for today.", pvpMatch.getPlayer2().getUsername());
+            return;
+        }
+
+        // 5️⃣ Giá trị tăng (ở đây +1, có thể thay bằng attempt.getScore() …)
+        int increment2 = 1;
+
+        // 6️⃣ Cập nhật tiến độ qua service đã có
+        for (MissionProgress mp : todayProgress2) {
+            try {
+                userMissionService.incrementProgress(pvpMatch.getPlayer2().getId(),
+                        mp.getMission().getId(),
+                        increment2);
+                log.debug("Incremented mission {} (type={}) for user {} by {}.",
+                        mp.getMission().getId(),
+                        mp.getMission().getMissionType(),
+                        pvpMatch.getPlayer2().getUsername(),
+                        increment2);
+            } catch (Exception e) {
+                // Đừng để một lỗi phá hỏng toàn bộ quá trình
+                log.warn("Failed to increment mission {} for user {}: {}",
+                        mp.getMission().getId(), pvpMatch.getPlayer2().getUsername(), e.getMessage());
+            }
+        }
+    }
 
 
     private final StringRedisTemplate redisTemplate;
     private final PvpMatchRepository pvpMatchRepository;
     private final UserRepository userRepository;
     private final ExamRepository examRepository;
-
-    @Autowired
-    private ExamMapper examMapper;
-    @Autowired
-    private ExamAttemptRepository examAttemptRepository;
+    private final ExamMapper examMapper;
+    private final ExamAttemptRepository examAttemptRepository;
+    private final ExamGenerationPVPService examGenerationPVPService;
+    private final ExamAttemptService examAttemptService;
+    private final QuestionRepository questionRepository;
+    private final BadgeMapper badgeMapper;
 
     private static final String MATCH_QUEUE_KEY = "pvp:match:queue";
-
-    public MatchmakingService(StringRedisTemplate redisTemplate,
-                              PvpMatchRepository pvpMatchRepository,
-                              UserRepository userRepository,
-                              ExamRepository examRepository) {
-        this.redisTemplate = redisTemplate;
-        this.pvpMatchRepository = pvpMatchRepository;
-        this.userRepository = userRepository;
-        this.examRepository = examRepository;
-    }
 
     @Transactional
     public synchronized PvpMatchResponse findMatch(User player2) {
@@ -118,8 +196,7 @@ public class MatchmakingService {
                 .startTime(savedMatch.getStartTime())
                 .build();
     }
-    @Autowired
-    ExamGenerationPVPService examGenerationPVPService;
+
     @Transactional
     public PvpMatchResponse createDirectMatch(Integer player1Id, Integer player2Id, RandomBlueprintRequest request) {
         System.out.println("Themes: " + request.getThemeIds() +"so luong: "+ request.getTotalQuestions() + "Do kho: "+ request.getDifficulty()+"loai cau hoi: "+ request.getQuestionTypes());
@@ -168,10 +245,7 @@ public class MatchmakingService {
     public void cancelFindMatch(Integer userId) {
         redisTemplate.opsForSet().remove(MATCH_QUEUE_KEY, String.valueOf(userId));
     }
-    @Autowired
-    ExamAttemptService examAttemptService;
-    @Autowired
-    QuestionRepository questionRepository;
+
 
     @Transactional
     public QuizProgressResponse playing(Integer matchId, ExamAnswerRequest request, Principal principal){
@@ -329,8 +403,6 @@ public class MatchmakingService {
         }
         return null;
     }
-    @Autowired
-    BadgeMapper badgeMapper;
     private MatchResultResponse finalizeMatch(PvpMatch match) {
         match.setStatus(String.valueOf(MatchStatus.FINISHED));
         match.setEndTime(LocalDateTime.now());
@@ -398,7 +470,7 @@ public class MatchmakingService {
                 .WinStreak(player2.getWinStreak())
                 .badgeRank(badgeResponse2)
                 .build();
-
+        checkMissionExam(match);
         return MatchResultResponse.builder()
                 .matchId(match.getId())
                 .winnerId(winnerId)

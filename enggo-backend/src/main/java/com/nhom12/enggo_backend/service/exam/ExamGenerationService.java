@@ -261,7 +261,7 @@ public class ExamGenerationService {
         Set<ThemeResponse> themeResponses = exam.getExamTags().stream()
                 .map(ExamTag::getTheme)
                 .filter(Objects::nonNull)
-                .map(t -> new ThemeResponse(t.getId(), t.getThemeName()))
+                .map(t -> new ThemeResponse(t.getId(), t.getThemeName(),t.getThemeImage()))
                 .collect(Collectors.toSet());
 
         Set<SkillResponse> skillResponses = exam.getExamTags().stream()
@@ -288,4 +288,5 @@ public class ExamGenerationService {
                 .skills(new ArrayList<>(skillResponses))
                 .build();
     }
+
 }

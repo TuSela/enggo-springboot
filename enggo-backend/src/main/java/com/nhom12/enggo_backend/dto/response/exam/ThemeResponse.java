@@ -8,4 +8,5 @@ import lombok.Data;
 public class ThemeResponse {
     Integer id;
     String themeName;
+    String imageUrl;
 }
