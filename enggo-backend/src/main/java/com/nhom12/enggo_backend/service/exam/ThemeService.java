@@ -5,10 +5,13 @@ import com.nhom12.enggo_backend.dto.response.exam.ThemeResponse;
 import com.nhom12.enggo_backend.entity.exam.Theme;
 import com.nhom12.enggo_backend.mapper.exam.ThemeMapper;
 import com.nhom12.enggo_backend.repository.exam.ThemeRepository;
+import com.nhom12.enggo_backend.service.upload.UploadsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -20,15 +23,22 @@ import java.util.stream.Collectors;
 public class ThemeService {
     private final ThemeMapper themeMapper;
     private final ThemeRepository themeRepository;
+    private final UploadsService uploadsService;
 
     //Tao chu de
-    public Theme addTheme(ThemeRequest request) {
+    public Theme addTheme(ThemeRequest request) throws IOException {
         if (themeRepository.existsByThemeName(request.getThemeName())) {
             throw new RuntimeException();
         }
 
-        var theme = themeMapper.toTheme(request);
+        var theme = new Theme();
+        theme.setThemeName(request.getThemeName());
+        theme.setCategory(request.getCategory());
+        theme.setThemeDescription(request.getThemeDescription());
+        theme.setThemeImage(uploadsService.uploadImage(request.getThemeImage()));
         theme.setActive(true);
+        theme.setCreatedAt(LocalDateTime.now().withNano(0));
+        theme.setUpdatedAt(LocalDateTime.now().withNano(0));
         themeRepository.save(theme);
 
         return theme;
@@ -65,7 +75,7 @@ public class ThemeService {
     }
 
     //cap nhat theme
-    public Theme updateTheme(ThemeRequest request, Integer id) {
+    public Theme updateTheme(ThemeRequest request, Integer id) throws IOException {
         var theme = themeRepository.findById(id).orElseThrow(RuntimeException::new);
 
         if (!theme.getThemeName().equals(request.getThemeName())) {
@@ -74,7 +84,13 @@ public class ThemeService {
             }
         }
 
-        themeMapper.updateTheme(theme, request);
+        theme.setThemeName(request.getThemeName());
+        theme.setCategory(request.getCategory());
+        theme.setThemeDescription(request.getThemeDescription());
+
+        if (request.getThemeImage() != null && !request.getThemeImage().isEmpty()) {
+            theme.setThemeImage(uploadsService.uploadImage(request.getThemeImage()));
+        }
         theme.setUpdatedAt(LocalDateTime.now().withNano(0));
         themeRepository.save(theme);
         return theme;

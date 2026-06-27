@@ -1,6 +1,7 @@
 package com.nhom12.enggo_backend.controller;
 
 import com.nhom12.enggo_backend.dto.request.ApiResponse;
+import com.nhom12.enggo_backend.dto.request.UpdatePasswordRequest;
 import com.nhom12.enggo_backend.dto.request.UserCreationRequest;
 import com.nhom12.enggo_backend.dto.request.UserUpdateRequest;
 import com.nhom12.enggo_backend.dto.response.PageResponse;
@@ -102,6 +103,15 @@ public class UserController {
                 .result(userService.updateUser(request))
                 .build();
     }
+
+    @PutMapping("/updatePassword")
+    ApiResponse<String> updateUserPassword(@RequestBody UpdatePasswordRequest request) {
+        userService.updateUserPassword(request);
+        return ApiResponse.<String>builder()
+                .result("Password has been changed")
+                .build();
+    }
+
     @PostMapping("/uploadAvatar")
     public ApiResponse<String> uploadAvatar(@RequestParam("file") MultipartFile file) throws IOException {
 

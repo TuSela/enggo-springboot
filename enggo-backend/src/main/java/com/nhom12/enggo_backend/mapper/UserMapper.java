@@ -38,5 +38,6 @@ public interface UserMapper {
     @Mapping(target = "pvpWins", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "roles", ignore = true)
+    @Mapping(target =  "fullName", ignore = true)
     void updateUser(@MappingTarget User user, UserUpdateRequest request);
 }

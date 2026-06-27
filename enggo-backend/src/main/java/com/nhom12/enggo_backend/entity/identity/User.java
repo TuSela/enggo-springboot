@@ -32,6 +32,9 @@ public class User {
     @Column(nullable = false, unique = true, length = 50)
     String username;
 
+    @Column(name = "full_name")
+    String fullName;
+
     @Column(nullable = false, unique = true, length = 100)
     String email;
 
@@ -100,4 +103,5 @@ public class User {
         }
         this.exp += amount;
     }
+
 }

@@ -11,6 +11,7 @@ public enum ErrorCode {
     USER_EXISTED(1002, "User existed", HttpStatus.BAD_REQUEST),
     USERNAME_INVALID(1003, "Username must be at least {min} characters", HttpStatus.BAD_REQUEST),
     INVALID_PASSWORD(1004, "Password must be at least {min} characters", HttpStatus.BAD_REQUEST),
+    INVALID_PASSWORD_OLD(1015,"mat khau cu khong khop",HttpStatus.BAD_REQUEST),
     USER_NOT_EXISTED(1005, "User not existed", HttpStatus.NOT_FOUND),
     UNAUTHENTICATED(1006, "Unauthenticated", HttpStatus.UNAUTHORIZED),
     UNAUTHORIZED(1007, "You do not have permission", HttpStatus.FORBIDDEN),
@@ -27,7 +28,9 @@ public enum ErrorCode {
     UPLOAD_FAILED(1005, "Cloudinary upload failed", HttpStatus.INTERNAL_SERVER_ERROR),
     FRIEND_REQUEST_EXISTED(1011, "Lời mời kết bạn đã được gửi trước đó", HttpStatus.BAD_REQUEST),
     FRIEND_REQUEST_NOT_FOUND(1012, "Không tìm thấy lời mời kết bạn hợp lệ", HttpStatus.NOT_FOUND),
-    ;
+    PASSWORD_FIELDS_REQUIRED(1012, "Yêu cầu nhập không được bỏ trống", HttpStatus.BAD_REQUEST),
+    PASSWORD_CONFIRM_NOT_MATCH(1013, "Your password does not match" , HttpStatus.BAD_REQUEST ),
+    NEW_PASSWORD_SAME_AS_OLD(1013, "New password same as old" , HttpStatus.BAD_REQUEST ),;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {
         this.code = code;

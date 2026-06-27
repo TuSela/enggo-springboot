@@ -16,6 +16,7 @@ import java.util.Set;
 public class UserResponse {
     Integer id;
     String username;
+    String fullName;
     String email;
     Integer exp;
     Integer level;
@@ -30,4 +31,5 @@ public class UserResponse {
     Integer winStreak;
     Set<RoleResponse> roles;
     BadgeResponse badgeRank;
+    Integer leaderboardRank;
 }

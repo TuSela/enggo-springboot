@@ -7,6 +7,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
+import java.util.List;
+
 /**
  * Response returned after a user successfully claims a mission reward.
  */
@@ -22,4 +24,6 @@ public class ClaimRewardResponse {
     Integer newTotalExp;
     /** New status of the mission progress (always CLAIMED) */
     String status;
+
+    List<BadgeResponse> badgeResponse;
 }

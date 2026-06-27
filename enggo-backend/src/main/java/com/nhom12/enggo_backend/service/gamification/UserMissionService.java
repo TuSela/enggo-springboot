@@ -1,23 +1,22 @@
 package com.nhom12.enggo_backend.service.gamification;
 
-import com.nhom12.enggo_backend.dto.request.gamification.MissionProgressRequest;
+import com.nhom12.enggo_backend.dto.response.gamification.BadgeResponse;
 import com.nhom12.enggo_backend.dto.response.gamification.MissionProgressResponse;
 import com.nhom12.enggo_backend.dto.response.gamification.MissionResponse;
 import com.nhom12.enggo_backend.dto.response.gamification.ClaimRewardResponse;
-import com.nhom12.enggo_backend.entity.gamification.Mission;
-import com.nhom12.enggo_backend.entity.gamification.MissionProgress;
+import com.nhom12.enggo_backend.entity.gamification.*;
 import com.nhom12.enggo_backend.entity.identity.User;
 import com.nhom12.enggo_backend.exception.AppException;
 import com.nhom12.enggo_backend.exception.ErrorCode;
 import com.nhom12.enggo_backend.repository.UserRepository;
-import com.nhom12.enggo_backend.repository.gamification.MissionProgressRepository;
-import com.nhom12.enggo_backend.repository.gamification.MissionRepository;
+import com.nhom12.enggo_backend.repository.gamification.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -83,29 +82,81 @@ public class UserMissionService {
     /**
      * Claim reward for a completed mission.
      */
+    private final BadgeRepository badgeRepository;
+    private final MissionBadgeRepository missionBadgeRepository;
+    private final UserBadgeRepository userBadgeRepository;
+
     @Transactional
     public ClaimRewardResponse claimReward(Integer userId, Integer missionId) {
         MissionProgress progress = findProgress(userId, missionId);
 
+        // 1. Kiểm tra tiến độ hoàn thành nhiệm vụ
         if (progress.getMission().getTargetValue() > progress.getCurrentValue()) {
             throw new AppException(ErrorCode.INVALID_OPERATION);
         }
-        // Ensure not already claimed
+
+        // 2. Kiểm tra xem nhiệm vụ đã được nhận thưởng trước đó chưa
         if ("CLAIMED".equals(progress.getStatus())) {
             throw new AppException(ErrorCode.INVALID_OPERATION);
         }
-        // Add experience to user
+
+        // 3. Cộng kinh nghiệm (EXP) cho User
         User user = progress.getUser();
         int reward = progress.getMission().getRewardExp() != null ? progress.getMission().getRewardExp() : 0;
         user.addExp(reward);
         userRepository.save(user);
-        // Update progress status
+
+        // 4. Cập nhật trạng thái tiến độ thành CLAIMED
         progress.setStatus("CLAIMED");
         missionProgressRepository.save(progress);
+
+        Mission mission = progress.getMission();
+        List<MissionBadge> missionBadges = missionBadgeRepository.findByMission(mission);
+
+        // Khởi tạo danh sách chứa các Badge mà User THỰC SỰ nhận được trong lượt bấm này
+        List<Badge> earnedBadges = new ArrayList<>();
+
+        if (missionBadges != null && !missionBadges.isEmpty()) {
+            for (MissionBadge mb : missionBadges) {
+                Badge badge = mb.getBadge();
+                if (badge != null) {
+                    UserBadgeId userBadgeId = new UserBadgeId(user.getId(), badge.getId());
+                    boolean isAlreadyOwned = userBadgeRepository.existsById(userBadgeId);
+
+                    if (!isAlreadyOwned) {
+                        UserBadge userBadge = UserBadge.builder()
+                                .id(userBadgeId)
+                                .user(user)
+                                .badge(badge)
+                                .build();
+
+                        userBadgeRepository.save(userBadge);
+
+                        // Gom Huy hiệu mới nhận vào danh sách
+                        earnedBadges.add(badge);
+                    }
+                }
+            }
+        }
+
+        // 6. SỬA TẠI ĐÂY: Ánh xạ danh sách Badge sang BadgeResponse bằng Stream API
+        // (Nếu bạn có badgeMapper, có thể thay thế bằng: badgeMapper.toBadgeResponseList(earnedBadges))
+        List<BadgeResponse> badgeResponseList = earnedBadges.stream()
+                .map(badge -> BadgeResponse.builder()
+                        .id(badge.getId())
+                        .badgeName(badge.getBadgeName())
+                        .description(badge.getDescription())
+                        .iconUrl(badge.getIconUrl())
+                        // Gán thêm các trường khác của BadgeResponse nếu DTO của bạn có yêu cầu
+                        .build())
+                .toList();
+
+        // 7. Trả về kết quả hoàn chỉnh chứa danh sách Huy hiệu vừa đạt được
         return ClaimRewardResponse.builder()
                 .expAwarded(reward)
                 .newTotalExp(user.getExp())
                 .status("CLAIMED")
+                .badgeResponse(badgeResponseList) // Bắn dữ liệu Badge ra đây
                 .build();
     }
 
