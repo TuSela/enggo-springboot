@@ -31,7 +31,10 @@ public class ThemeService {
             throw new RuntimeException();
         }
 
-        var theme = themeMapper.toTheme(request);
+        var theme = new Theme();
+        theme.setThemeName(request.getThemeName());
+        theme.setCategory(request.getCategory());
+        theme.setThemeDescription(request.getThemeDescription());
         theme.setThemeImage(uploadsService.uploadImage(request.getThemeImage()));
         theme.setActive(true);
         themeRepository.save(theme);
@@ -79,7 +82,9 @@ public class ThemeService {
             }
         }
 
-        themeMapper.updateTheme(theme, request);
+        theme.setThemeName(request.getThemeName());
+        theme.setCategory(request.getCategory());
+        theme.setThemeDescription(request.getThemeDescription());
 
         if (request.getThemeImage() != null && !request.getThemeImage().isEmpty()) {
             theme.setThemeImage(uploadsService.uploadImage(request.getThemeImage()));
