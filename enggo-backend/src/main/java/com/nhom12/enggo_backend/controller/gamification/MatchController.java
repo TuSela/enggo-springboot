@@ -104,7 +104,6 @@ public class MatchController {
             messagingTemplate.convertAndSend("/topic/queue-status/" + player.getId(), "WAITING_FOR_ENEMY_READY");
         }
     }
-
     @MessageMapping("/leave-queue")
     public void leaveQueue(@Payload Integer userId) {
         matchmakingService.cancelFindMatch(userId);

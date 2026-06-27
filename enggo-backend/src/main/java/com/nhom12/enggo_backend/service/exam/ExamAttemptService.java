@@ -19,6 +19,7 @@ import com.nhom12.enggo_backend.repository.exam.*;
 import com.nhom12.enggo_backend.repository.gamification.MissionProgressRepository;
 import com.nhom12.enggo_backend.service.gamification.LevelService;
 import com.nhom12.enggo_backend.service.gamification.MatchmakingService;
+import com.nhom12.enggo_backend.service.gamification.StreakService;
 import com.nhom12.enggo_backend.service.gamification.UserMissionService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -49,6 +50,7 @@ public class ExamAttemptService {
     private final ObjectMapper objectMapper;
     private final ExamAttemptDetailRepository examAttemptDetailRepository;
     private final LevelService levelService;
+    private final StreakService streakService;
 
     @Transactional
     public ExamSubmitResponse submitExam(ExamSubmitRequest request, Integer examId, Integer attemptId) {
@@ -110,6 +112,7 @@ public class ExamAttemptService {
 
         user.setExp(newExp);
         user.setLevel(newLevelInfo.getCurrentLevel());
+        streakService.recordDailyActivity(user);
         userRepository.save(user);
 
         LocalDateTime completedAt = !isTimeOut ? LocalDateTime.now() : LocalDateTime.now().plusMinutes(duration);
@@ -511,6 +514,10 @@ public class ExamAttemptService {
                 .stream()
                 .filter(p -> p.getMission() != null &&
                         targetTypes.contains(p.getMission().getMissionType()))
+                // Bỏ qua mission đã CLAIMED: gọi incrementProgress trên mission đã CLAIMED
+                // sẽ ném AppException, khiến cả transaction submitExam bị Spring đánh dấu
+                // rollback-only (dù exception được catch ở dưới) -> rollback toàn bộ submitExam.
+                .filter(p -> !"CLAIMED".equals(p.getStatus()))
                 .collect(Collectors.toList());
 
         // Logger variable removed – will use class‑level logger
@@ -522,22 +529,17 @@ public class ExamAttemptService {
         // 5️⃣ Giá trị tăng (ở đây +1, có thể thay bằng attempt.getScore() …)
         int increment = 1;
 
-        // 6️⃣ Cập nhật tiến độ qua service đã có
+        // 6️⃣ Cập nhật tiến độ qua service đã có (chạy trong transaction riêng,
+        // không thể làm rollback transaction submitExam đang chứa exp/level/streak)
         for (MissionProgress mp : todayProgress) {
-            try {
-                userMissionService.incrementProgress(user.getId(),
-                        mp.getMission().getId(),
-                        increment);
-                log.debug("Incremented mission {} (type={}) for user {} by {}.",
-                        mp.getMission().getId(),
-                        mp.getMission().getMissionType(),
-                        user.getUsername(),
-                        increment);
-            } catch (Exception e) {
-                // Đừng để một lỗi phá hỏng toàn bộ quá trình
-                log.warn("Failed to increment mission {} for user {}: {}",
-                        mp.getMission().getId(), user.getUsername(), e.getMessage());
-            }
+            userMissionService.incrementProgressSafely(user.getId(),
+                    mp.getMission().getId(),
+                    increment);
+            log.debug("Incremented mission {} (type={}) for user {} by {}.",
+                    mp.getMission().getId(),
+                    mp.getMission().getMissionType(),
+                    user.getUsername(),
+                    increment);
         }
     }
 }

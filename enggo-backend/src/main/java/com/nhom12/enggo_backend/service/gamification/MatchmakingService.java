@@ -69,6 +69,9 @@ public class MatchmakingService {
                 .stream()
                 .filter(p -> p.getMission() != null &&
                         targetTypes.contains(p.getMission().getMissionType()))
+                // Bỏ qua mission đã CLAIMED để tránh AppException khiến transaction
+                // finalizeMatch bị Spring đánh dấu rollback-only.
+                .filter(p -> !"CLAIMED".equals(p.getStatus()))
                 .collect(Collectors.toList());
 
         // Logger variable removed – will use class‑level logger
@@ -80,28 +83,24 @@ public class MatchmakingService {
         // 5️⃣ Giá trị tăng (ở đây +1, có thể thay bằng attempt.getScore() …)
         int increment = 1;
 
-        // 6️⃣ Cập nhật tiến độ qua service đã có
+        // 6️⃣ Cập nhật tiến độ qua service đã có (chạy trong transaction riêng,
+        // không thể làm rollback transaction finalizeMatch đang chứa exp/elo/streak)
         for (MissionProgress mp : todayProgress) {
-            try {
-                userMissionService.incrementProgress(pvpMatch.getPlayer1().getId(),
-                        mp.getMission().getId(),
-                        increment);
-                log.debug("Incremented mission {} (type={}) for user {} by {}.",
-                        mp.getMission().getId(),
-                        mp.getMission().getMissionType(),
-                        pvpMatch.getPlayer1().getUsername(),
-                        increment);
-            } catch (Exception e) {
-                // Đừng để một lỗi phá hỏng toàn bộ quá trình
-                log.warn("Failed to increment mission {} for user {}: {}",
-                        mp.getMission().getId(), pvpMatch.getPlayer1().getUsername(), e.getMessage());
-            }
+            userMissionService.incrementProgressSafely(pvpMatch.getPlayer1().getId(),
+                    mp.getMission().getId(),
+                    increment);
+            log.debug("Incremented mission {} (type={}) for user {} by {}.",
+                    mp.getMission().getId(),
+                    mp.getMission().getMissionType(),
+                    pvpMatch.getPlayer1().getUsername(),
+                    increment);
         }
         List<MissionProgress> todayProgress2 = progressRepository
                 .findByUserIdAndDeadlineBetween(pvpMatch.getPlayer2().getId(), startOfDay, endOfDay)
                 .stream()
                 .filter(p -> p.getMission() != null &&
                         targetTypes.contains(p.getMission().getMissionType()))
+                .filter(p -> !"CLAIMED".equals(p.getStatus()))
                 .collect(Collectors.toList());
 
         // Logger variable removed – will use class‑level logger
@@ -115,20 +114,14 @@ public class MatchmakingService {
 
         // 6️⃣ Cập nhật tiến độ qua service đã có
         for (MissionProgress mp : todayProgress2) {
-            try {
-                userMissionService.incrementProgress(pvpMatch.getPlayer2().getId(),
-                        mp.getMission().getId(),
-                        increment2);
-                log.debug("Incremented mission {} (type={}) for user {} by {}.",
-                        mp.getMission().getId(),
-                        mp.getMission().getMissionType(),
-                        pvpMatch.getPlayer2().getUsername(),
-                        increment2);
-            } catch (Exception e) {
-                // Đừng để một lỗi phá hỏng toàn bộ quá trình
-                log.warn("Failed to increment mission {} for user {}: {}",
-                        mp.getMission().getId(), pvpMatch.getPlayer2().getUsername(), e.getMessage());
-            }
+            userMissionService.incrementProgressSafely(pvpMatch.getPlayer2().getId(),
+                    mp.getMission().getId(),
+                    increment2);
+            log.debug("Incremented mission {} (type={}) for user {} by {}.",
+                    mp.getMission().getId(),
+                    mp.getMission().getMissionType(),
+                    pvpMatch.getPlayer2().getUsername(),
+                    increment2);
         }
     }
 
@@ -143,6 +136,7 @@ public class MatchmakingService {
     private final ExamAttemptService examAttemptService;
     private final QuestionRepository questionRepository;
     private final BadgeMapper badgeMapper;
+    private final StreakService streakService;
 
     @Autowired
     private UserService userService;
@@ -440,6 +434,8 @@ public class MatchmakingService {
 
         player1.setBadgeRank(awardBadgeIfEligible(player1));
         player2.setBadgeRank(awardBadgeIfEligible(player2));
+        streakService.recordDailyActivity(player1);
+        streakService.recordDailyActivity(player2);
         userRepository.save(player1);
         userRepository.save(player2);
         // Award badge based on updated elo

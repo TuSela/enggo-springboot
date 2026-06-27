@@ -103,6 +103,7 @@ public class AuthenticationService {
             p.setStatus("FAILED");
             missionProgressRepository.save(p);
         }
+
         // 2️⃣ Check if the user already has any mission progress for today
         boolean alreadyHas = !missionProgressRepository
                 .findByUserIdAndDeadlineBetween(user.getId(), startOfDay, endOfDay)

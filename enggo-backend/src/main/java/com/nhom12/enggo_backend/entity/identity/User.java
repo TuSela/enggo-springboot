@@ -49,6 +49,9 @@ public class User {
     @Column(name = "streak_days")
     Integer streakDays;
 
+    @Column(name = "last_streak_date")
+    LocalDateTime lastStreakDate;
+
     @Column(name = "completed_tasks")
     Integer completedTasks;
 
@@ -92,6 +95,30 @@ public class User {
     }
     public void resetWinStreak(){
         this.winStreak = 0;
+    }
+
+    /**
+     * Cập nhật streakDays dựa trên ngày hoạt động (exam/pvp) gần nhất.
+     * - Lần đầu hoạt động: streakDays = 1
+     * - Hoạt động vào ngày kế tiếp ngày trước đó: streakDays + 1
+     * - Hoạt động lại trong cùng 1 ngày: không thay đổi
+     * - Bỏ lỡ >= 1 ngày: reset về 1
+     */
+    public void touchStreak(java.time.LocalDate today) {
+        if (this.lastStreakDate == null) {
+            this.streakDays = 1;
+        } else {
+            java.time.LocalDate lastDate = this.lastStreakDate.toLocalDate();
+            long diff = java.time.temporal.ChronoUnit.DAYS.between(lastDate, today);
+            if (diff == 0) {
+                return; // đã tính hôm nay rồi
+            } else if (diff == 1) {
+                this.streakDays = (this.streakDays == null ? 0 : this.streakDays) + 1;
+            } else {
+                this.streakDays = 1;
+            }
+        }
+        this.lastStreakDate = today.atStartOfDay();
     }
 
     /**

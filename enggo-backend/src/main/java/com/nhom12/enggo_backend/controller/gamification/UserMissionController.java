@@ -28,14 +28,12 @@ public class UserMissionController {
         String username = auth.getName();
         return userService.getMyInfo().getId(); // getMyInfo returns UserResponse which contains id
     }
-
     @GetMapping("/today")
     public ApiResponse<List<MissionProgressResponse>> getTodayMissions() {
         Integer userId = getCurrentUserId();
         List<MissionProgressResponse> missions = userMissionService.getTodayMissions(userId);
         return ApiResponse.<List<MissionProgressResponse>>builder().result(missions).build();
     }
-
     @PostMapping("/{missionId}/progress")
     public ApiResponse<MissionProgressResponse> incrementProgress(@PathVariable Integer missionId,
                                                                    @RequestBody(required = false) Map<String, Integer> body) {
@@ -47,7 +45,6 @@ public class UserMissionController {
         MissionProgressResponse updated = userMissionService.incrementProgress(userId, missionId, inc);
         return ApiResponse.<MissionProgressResponse>builder().result(updated).build();
     }
-
     @PostMapping("/{missionId}/claim")
     public ApiResponse<ClaimRewardResponse> claimReward(@PathVariable Integer missionId) {
         Integer userId = getCurrentUserId();

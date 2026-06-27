@@ -61,6 +61,26 @@ public class UserMissionService {
                 .build();
     }
     /**
+     * Tăng tiến độ mission một cách "an toàn": chạy trong transaction riêng
+     * (REQUIRES_NEW) và tự bắt lỗi, để một mission lỗi (vd đã CLAIMED, hoặc
+     * race condition) không bao giờ làm rollback transaction của nơi gọi
+     * (ví dụ submitExam, finalizeMatch — vốn chứa các thay đổi quan trọng
+     * như exp, level, elo, streakDays).
+     *
+     * Lưu ý: phải gọi qua bean UserMissionService (cross-class call) để
+     * Spring AOP proxy áp dụng đúng @Transactional; self-invocation trong
+     * cùng class sẽ bỏ qua annotation này.
+     */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public void incrementProgressSafely(Integer userId, Integer missionId, int increment) {
+        try {
+            incrementProgress(userId, missionId, increment);
+        } catch (Exception e) {
+            log.warn("Failed to increment mission {} for user {}: {}", missionId, userId, e.getMessage());
+        }
+    }
+
+    /**
      * Increment progress for a mission. If the target is reached, status becomes COMPLETED.
      */
     @Transactional
