@@ -1,6 +1,7 @@
 package com.nhom12.enggo_backend.service;
 
 import com.nhom12.enggo_backend.constant.PredefinedRole;
+import com.nhom12.enggo_backend.dto.request.UpdatePasswordRequest;
 import com.nhom12.enggo_backend.dto.request.UserCreationRequest;
 import com.nhom12.enggo_backend.dto.request.UserUpdateRequest;
 import com.nhom12.enggo_backend.dto.response.PageResponse;
@@ -36,6 +37,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
 import java.util.HashSet;
 import java.util.List;
@@ -65,6 +67,7 @@ public class UserService {
 
         try {
             user = userRepository.save(user);
+            stringRedisTemplate.opsForZSet().add(ELO_KEY, user.getUsername(), (double) user.getElo());
         } catch (DataIntegrityViolationException exception){
             throw new AppException(ErrorCode.USER_EXISTED);
         }
@@ -134,14 +137,38 @@ public class UserService {
         String name = context.getAuthentication().getName();
         User user = userRepository.findByUsername(name).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
         userMapper.updateUser(user, request);
-        if (Objects.nonNull(request.getPassword()) && !request.getPassword().isBlank()) {
-            user.setPassword(passwordEncoder.encode(request.getPassword()));
-        }
         if (!CollectionUtils.isEmpty(request.getRoles())) {
             var roles = roleRepository.findByRoleNameIn(request.getRoles());
             user.setRoles(new HashSet<>(roles));
         }
         return userMapper.toUserResponse(userRepository.save(user));
+    }
+
+    public void updateUserPassword(UpdatePasswordRequest request) {
+        var context = SecurityContextHolder.getContext();
+        String name = context.getAuthentication().getName();
+        User user = userRepository.findByUsername(name).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        if (!StringUtils.hasText(request.getOldPassword()) ||
+                !StringUtils.hasText(request.getNewPassword()) ||
+                !StringUtils.hasText(request.getConfirmNewPassword())) {
+            throw new AppException(ErrorCode.PASSWORD_FIELDS_REQUIRED);
+        }
+
+        if (passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            throw new AppException(ErrorCode.INVALID_PASSWORD);
+        }
+
+        if (!request.getNewPassword().equals(request.getConfirmNewPassword())) {
+            throw new AppException(ErrorCode.PASSWORD_CONFIRM_NOT_MATCH);
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new AppException(ErrorCode.NEW_PASSWORD_SAME_AS_OLD);
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
     }
 
     @PreAuthorize("hasRole('ADMIN')")
