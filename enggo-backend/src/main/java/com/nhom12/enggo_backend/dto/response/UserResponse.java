@@ -30,4 +30,5 @@ public class UserResponse {
     Integer winStreak;
     Set<RoleResponse> roles;
     BadgeResponse badgeRank;
+    Integer leaderboardRank;
 }

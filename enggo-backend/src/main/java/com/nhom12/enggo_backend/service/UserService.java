@@ -24,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -33,6 +34,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import java.util.HashSet;
@@ -76,8 +78,12 @@ public class UserService {
         String name = context.getAuthentication().getName();
 
         User user = userRepository.findByUsername(name).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        Integer leaderboardRank = getMyEloRank();
 
-        return userMapper.toUserResponse(user);
+        UserResponse response = userMapper.toUserResponse(user);
+
+        response.setLeaderboardRank(leaderboardRank);
+        return response;
     }
 
     public List<UserMinimalResponse> searchUsersByUsername(String username) {
@@ -236,5 +242,56 @@ public class UserService {
     // 3. Hàm kiểm tra xem một người dùng bất kỳ có đang Online hay không
     public boolean isUserOnline(String userId) {
         return redisTemplate.opsForHash().hasKey(REDIS_ONLINE_KEY, userId);
+    }
+
+    @Qualifier("leaderboardRedisTemplate")
+    private final RedisTemplate<String, String> stringRedisTemplate;
+    private static final String ELO_KEY = "leaderboard:elo";
+
+    public Integer getMyEloRank() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getName())) {
+            return null;
+        }
+        String username = auth.getName();
+
+        // 1. Hỏi thử Redis (Sử dụng stringRedisTemplate mới)
+        Long redisRank = stringRedisTemplate.opsForZSet().reverseRank(ELO_KEY, username);
+
+        if (redisRank != null) {
+            return redisRank.intValue() + 1;
+        }
+
+        // 2. Fallback xuống MySQL nếu Redis chưa có dữ liệu
+        User me = userRepository.findByUsername(username).orElse(null);
+        if (me != null) {
+            List<User> allUsers = userRepository.findAll();
+            for (User u : allUsers) {
+                // Đẩy bằng stringRedisTemplate -> dữ liệu lưu xuống Redis sẽ cực kỳ sạch
+                stringRedisTemplate.opsForZSet().add(ELO_KEY, u.getUsername(), (double) u.getElo());
+            }
+
+            Long freshRank = stringRedisTemplate.opsForZSet().reverseRank(ELO_KEY, username);
+            if (freshRank != null) {
+                return freshRank.intValue() + 1;
+            }
+
+            long higherUsersCount = userRepository.countByEloGreaterThan(me.getElo());
+            return (int) higherUsersCount + 1;
+        }
+
+        return null;
+    }
+
+    @Transactional
+    public void updatePlayerElo(Integer userId, int eloChange) {
+        User user = userRepository.findById(userId).orElseThrow();
+        int newElo = user.getElo() + eloChange;
+        user.setElo(newElo);
+        userRepository.save(user);
+
+        // 2. CẬP NHẬT SANG REDIS NGAY LẬP TỨC
+        // Lệnh .add() của ZSet sẽ tự động ghi đè/cập nhật điểm mới cho username này và sắp xếp lại rank luôn
+        stringRedisTemplate.opsForZSet().add("leaderboard:elo", user.getUsername(), (double) newElo);
     }
 }
