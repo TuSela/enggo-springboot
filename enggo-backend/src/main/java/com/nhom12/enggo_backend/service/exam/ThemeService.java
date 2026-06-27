@@ -37,6 +37,8 @@ public class ThemeService {
         theme.setThemeDescription(request.getThemeDescription());
         theme.setThemeImage(uploadsService.uploadImage(request.getThemeImage()));
         theme.setActive(true);
+        theme.setCreatedAt(LocalDateTime.now().withNano(0));
+        theme.setUpdatedAt(LocalDateTime.now().withNano(0));
         themeRepository.save(theme);
 
         return theme;
