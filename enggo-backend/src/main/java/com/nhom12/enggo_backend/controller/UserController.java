@@ -107,7 +107,7 @@ public class UserController {
     }
 
     @PutMapping("/updatePassword")
-    ApiResponse<String> updateUserPassword(UpdatePasswordRequest request) {
+    ApiResponse<String> updateUserPassword(@RequestBody UpdatePasswordRequest request) {
         userService.updateUserPassword(request);
         return ApiResponse.<String>builder()
                 .result("Password has been changed")

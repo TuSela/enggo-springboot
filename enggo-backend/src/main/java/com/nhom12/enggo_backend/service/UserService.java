@@ -155,8 +155,8 @@ public class UserService {
             throw new AppException(ErrorCode.PASSWORD_FIELDS_REQUIRED);
         }
 
-        if (passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
-            throw new AppException(ErrorCode.INVALID_PASSWORD);
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            throw new AppException(ErrorCode.INVALID_PASSWORD_OLD);
         }
 
         if (!request.getNewPassword().equals(request.getConfirmNewPassword())) {
