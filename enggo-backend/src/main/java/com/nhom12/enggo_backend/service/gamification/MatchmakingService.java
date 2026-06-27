@@ -19,6 +19,7 @@ import com.nhom12.enggo_backend.repository.gamification.BadgeRepository;
 import com.nhom12.enggo_backend.entity.gamification.Badge;
 import com.nhom12.enggo_backend.dto.request.gamification.UserBadgeRequest;
 import com.nhom12.enggo_backend.repository.UserRepository;
+import com.nhom12.enggo_backend.service.UserService;
 import com.nhom12.enggo_backend.service.exam.ExamAttemptService;
 import com.nhom12.enggo_backend.service.exam.ScoreCheck;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,6 +55,9 @@ public class MatchmakingService {
     private ExamMapper examMapper;
     @Autowired
     private ExamAttemptRepository examAttemptRepository;
+
+    @Autowired
+    private UserService userService;
 
     private static final String MATCH_QUEUE_KEY = "pvp:match:queue";
 
@@ -427,6 +431,8 @@ public class MatchmakingService {
         winner.setElo(winner.getElo() + change);
         loser.setElo(Math.max(0, loser.getElo() - change));
 
+        userService.updatePlayerElo(winner.getId(), change);
+        userService.updatePlayerElo(loser.getId(), -change);
     }
         // Award badge based on current elo (every 100 points)
         private Badge awardBadgeIfEligible(User user) {
