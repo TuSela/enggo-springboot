@@ -1,9 +1,6 @@
 package com.nhom12.enggo_backend.service.gamification;
 
-import com.nhom12.enggo_backend.dto.response.gamification.BadgeResponse;
-import com.nhom12.enggo_backend.dto.response.gamification.MissionProgressResponse;
-import com.nhom12.enggo_backend.dto.response.gamification.MissionResponse;
-import com.nhom12.enggo_backend.dto.response.gamification.ClaimRewardResponse;
+import com.nhom12.enggo_backend.dto.response.gamification.*;
 import com.nhom12.enggo_backend.entity.gamification.*;
 import com.nhom12.enggo_backend.entity.identity.User;
 import com.nhom12.enggo_backend.exception.AppException;
@@ -105,7 +102,7 @@ public class UserMissionService {
     private final BadgeRepository badgeRepository;
     private final MissionBadgeRepository missionBadgeRepository;
     private final UserBadgeRepository userBadgeRepository;
-
+    private final LevelService levelService;
     @Transactional
     public ClaimRewardResponse claimReward(Integer userId, Integer missionId) {
         MissionProgress progress = findProgress(userId, missionId);
@@ -123,7 +120,9 @@ public class UserMissionService {
         // 3. Cộng kinh nghiệm (EXP) cho User
         User user = progress.getUser();
         int reward = progress.getMission().getRewardExp() != null ? progress.getMission().getRewardExp() : 0;
+        LevelInfoResponse levelInfoResponse = levelService.getLevelInfo(reward);
         user.addExp(reward);
+        user.setLevel(levelInfoResponse.getCurrentLevel());
         userRepository.save(user);
 
         // 4. Cập nhật trạng thái tiến độ thành CLAIMED
