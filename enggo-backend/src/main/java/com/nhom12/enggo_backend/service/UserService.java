@@ -10,6 +10,8 @@ import com.nhom12.enggo_backend.dto.response.UserMinimalResponse;
 import com.nhom12.enggo_backend.dto.response.UserResponse;
 import com.nhom12.enggo_backend.dto.response.gamification.BadgeResponse;
 import com.nhom12.enggo_backend.entity.gamification.Badge;
+import com.nhom12.enggo_backend.entity.gamification.UserBadge;
+import com.nhom12.enggo_backend.entity.gamification.UserBadgeId;
 import com.nhom12.enggo_backend.entity.identity.auth.Role;
 import com.nhom12.enggo_backend.entity.identity.User;
 import com.nhom12.enggo_backend.entity.social.Friend;
@@ -19,6 +21,8 @@ import com.nhom12.enggo_backend.mapper.UserMapper;
 import com.nhom12.enggo_backend.mapper.gamificationMapper.BadgeMapper;
 import com.nhom12.enggo_backend.repository.RoleRepository;
 import com.nhom12.enggo_backend.repository.UserRepository;
+import com.nhom12.enggo_backend.repository.gamification.BadgeRepository;
+import com.nhom12.enggo_backend.repository.gamification.UserBadgeRepository;
 import com.nhom12.enggo_backend.repository.social.FriendRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -40,10 +44,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -52,10 +53,13 @@ import java.util.stream.Collectors;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
 public class UserService {
+    @Autowired
     UserRepository userRepository;
     RoleRepository roleRepository;
     UserMapper userMapper;
     PasswordEncoder passwordEncoder;
+    BadgeRepository badgeRepository;
+    UserBadgeRepository userBadgeRepository;
 
     public UserResponse createUser(UserCreationRequest request) {
         User user = userMapper.toUser(request);
@@ -68,9 +72,19 @@ public class UserService {
         user.setFullName(request.getUsername());
         user.setStatus("OFFLINE");
         user.setElo(75);
+        Badge badge = badgeRepository.findById(8).orElseThrow();
+        user.setBadgeRank(badge);
+        Badge badge2 = badgeRepository.findById(21).orElseThrow();
+        UserBadge userBadge = new UserBadge();
+        userBadge.setBadge(badge2);
+
         try {
             user = userRepository.save(user);
             stringRedisTemplate.opsForZSet().add(ELO_KEY, user.getUsername(), (double) user.getElo());
+            userBadge.setUser(user);
+            UserBadgeId userBadgeId = new UserBadgeId(user.getId(), 21);
+            userBadge.setId(userBadgeId);
+            userBadgeRepository.save(userBadge);
         } catch (DataIntegrityViolationException exception){
             throw new AppException(ErrorCode.USER_EXISTED);
         }
