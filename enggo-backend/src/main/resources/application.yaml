@@ -48,7 +48,6 @@ app:
     allowed-types:
       - image/jpeg
       - image/png
-
 game:
   levels:
     - { level: 1,  reqExp: 0 }
