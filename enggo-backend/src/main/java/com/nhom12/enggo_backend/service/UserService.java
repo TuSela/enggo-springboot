@@ -67,6 +67,7 @@ public class UserService {
         user.setRoles(roles);
         user.setFullName(request.getUsername());
         user.setStatus("OFFLINE");
+        user.setElo(75);
         try {
             user = userRepository.save(user);
             stringRedisTemplate.opsForZSet().add(ELO_KEY, user.getUsername(), (double) user.getElo());
