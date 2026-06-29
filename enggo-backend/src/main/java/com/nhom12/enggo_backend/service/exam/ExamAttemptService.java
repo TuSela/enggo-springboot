@@ -130,7 +130,10 @@ public class ExamAttemptService {
 
         examAttemptDetailRepository.saveAll(details);
 
-        return examAttemptMapper.toExamSubmitResponse(attempt);
+        ExamSubmitResponse response = examAttemptMapper.toExamSubmitResponse(attempt);
+        response.setLevelInfo(newLevelInfo);
+
+        return response;
     }
 
     private void validateExamAttempt(ExamAttempt attempt, User user, Exam exam) {
