@@ -18,10 +18,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-/**
- * Service handling daily missions for a specific user.
- * Provides methods to fetch today's missions, update progress and claim rewards.
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -31,9 +27,14 @@ public class UserMissionService {
     private final MissionProgressRepository missionProgressRepository;
     private final UserRepository userRepository;
 
-    /**
-     * Retrieve today's missions with progress for the given user.
-     */
+    private final BadgeRepository badgeRepository;
+    private final MissionBadgeRepository missionBadgeRepository;
+    private final UserBadgeRepository userBadgeRepository;
+    private final LevelService levelService;
+
+    // 2. INJECT GAME PROPERTIES VÀO SERVICE
+    private final LevelProperties gameProperties;
+
     @Transactional(readOnly = true)
     public List<MissionProgressResponse> getTodayMissions(Integer userId) {
         User user = findUser(userId);
@@ -43,6 +44,7 @@ public class UserMissionService {
                 .findByUserIdAndDeadlineBetween(user.getId(), start, end);
         return progresses.stream().map(this::toProgressResponse).collect(Collectors.toList());
     }
+
     private MissionResponse toMissionResponse(Mission mission) {
         return MissionResponse.builder()
                 .id(mission.getId())
@@ -57,17 +59,7 @@ public class UserMissionService {
                 .createdAt(mission.getCreatedAt())
                 .build();
     }
-    /**
-     * Tăng tiến độ mission một cách "an toàn": chạy trong transaction riêng
-     * (REQUIRES_NEW) và tự bắt lỗi, để một mission lỗi (vd đã CLAIMED, hoặc
-     * race condition) không bao giờ làm rollback transaction của nơi gọi
-     * (ví dụ submitExam, finalizeMatch — vốn chứa các thay đổi quan trọng
-     * như exp, level, elo, streakDays).
-     *
-     * Lưu ý: phải gọi qua bean UserMissionService (cross-class call) để
-     * Spring AOP proxy áp dụng đúng @Transactional; self-invocation trong
-     * cùng class sẽ bỏ qua annotation này.
-     */
+
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void incrementProgressSafely(Integer userId, Integer missionId, int increment) {
         try {
@@ -77,9 +69,6 @@ public class UserMissionService {
         }
     }
 
-    /**
-     * Increment progress for a mission. If the target is reached, status becomes COMPLETED.
-     */
     @Transactional
     public MissionProgressResponse incrementProgress(Integer userId, Integer missionId, int increment) {
         MissionProgress progress = findProgress(userId, missionId);
@@ -88,7 +77,6 @@ public class UserMissionService {
         }
         int newValue = (progress.getCurrentValue() == null ? 0 : progress.getCurrentValue()) + increment;
         progress.setCurrentValue(newValue);
-        // If target reached, mark as COMPLETED
         if (progress.getMission().getTargetValue() != null && newValue >= progress.getMission().getTargetValue()) {
             progress.setStatus("COMPLETED");
         }
@@ -96,33 +84,34 @@ public class UserMissionService {
         return toProgressResponse(saved);
     }
 
-    /**
-     * Claim reward for a completed mission.
-     */
-    private final BadgeRepository badgeRepository;
-    private final MissionBadgeRepository missionBadgeRepository;
-    private final UserBadgeRepository userBadgeRepository;
-    private final LevelService levelService;
     @Transactional
     public ClaimRewardResponse claimReward(Integer userId, Integer missionId) {
         MissionProgress progress = findProgress(userId, missionId);
 
-        // 1. Kiểm tra tiến độ hoàn thành nhiệm vụ
         if (progress.getMission().getTargetValue() > progress.getCurrentValue()) {
             throw new AppException(ErrorCode.INVALID_OPERATION);
         }
 
-        // 2. Kiểm tra xem nhiệm vụ đã được nhận thưởng trước đó chưa
         if ("CLAIMED".equals(progress.getStatus())) {
             throw new AppException(ErrorCode.INVALID_OPERATION);
         }
 
-        // 3. Cộng kinh nghiệm (EXP) cho User
+        // 3. XỬ LÝ CỘNG EXP VÀ TÍNH TOÁN LEVEL TỪ FILE APPLICATION.YML
         User user = progress.getUser();
         int reward = progress.getMission().getRewardExp() != null ? progress.getMission().getRewardExp() : 0;
-        LevelInfoResponse levelInfoResponse = levelService.getLevelInfo(reward);
+
+        // Cộng exp trước
         user.addExp(reward);
-        user.setLevel(levelInfoResponse.getCurrentLevel());
+        int totalExpAfterReward = user.getExp();
+
+        // Tìm level phù hợp nhất từ cấu hình (Tìm level cao nhất mà reqExp <= totalExpAfterReward)
+        int calculatedLevel = gameProperties.getLevels().stream()
+                .filter(lvlConfig -> totalExpAfterReward >= lvlConfig.getReqExp())
+                .mapToInt(LevelProperties.LevelConfig::getLevel)
+                .max()
+                .orElse(1); // Mặc định là level 1 nếu xảy ra lỗi cấu hình
+
+        user.setLevel(calculatedLevel); // Gán level mới cho user
         userRepository.save(user);
 
         // 4. Cập nhật trạng thái tiến độ thành CLAIMED
@@ -131,8 +120,6 @@ public class UserMissionService {
 
         Mission mission = progress.getMission();
         List<MissionBadge> missionBadges = missionBadgeRepository.findByMission(mission);
-
-        // Khởi tạo danh sách chứa các Badge mà User THỰC SỰ nhận được trong lượt bấm này
         List<Badge> earnedBadges = new ArrayList<>();
 
         if (missionBadges != null && !missionBadges.isEmpty()) {
@@ -150,36 +137,29 @@ public class UserMissionService {
                                 .build();
 
                         userBadgeRepository.save(userBadge);
-
-                        // Gom Huy hiệu mới nhận vào danh sách
                         earnedBadges.add(badge);
                     }
                 }
             }
         }
 
-        // 6. SỬA TẠI ĐÂY: Ánh xạ danh sách Badge sang BadgeResponse bằng Stream API
-        // (Nếu bạn có badgeMapper, có thể thay thế bằng: badgeMapper.toBadgeResponseList(earnedBadges))
         List<BadgeResponse> badgeResponseList = earnedBadges.stream()
                 .map(badge -> BadgeResponse.builder()
                         .id(badge.getId())
                         .badgeName(badge.getBadgeName())
                         .description(badge.getDescription())
                         .iconUrl(badge.getIconUrl())
-                        // Gán thêm các trường khác của BadgeResponse nếu DTO của bạn có yêu cầu
                         .build())
                 .toList();
 
-        // 7. Trả về kết quả hoàn chỉnh chứa danh sách Huy hiệu vừa đạt được
         return ClaimRewardResponse.builder()
                 .expAwarded(reward)
                 .newTotalExp(user.getExp())
                 .status("CLAIMED")
-                .badgeResponse(badgeResponseList) // Bắn dữ liệu Badge ra đây
+                .badgeResponse(badgeResponseList)
                 .build();
     }
 
-    // Helper methods -----------------------------------------------------
     private User findUser(Integer userId) {
         return userRepository.findById(userId).orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND));
     }
