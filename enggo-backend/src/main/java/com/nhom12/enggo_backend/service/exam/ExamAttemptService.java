@@ -115,22 +115,25 @@ public class ExamAttemptService {
         streakService.recordDailyActivity(user);
         userRepository.save(user);
 
-        LocalDateTime completedAt = !isTimeOut ? LocalDateTime.now() : LocalDateTime.now().plusMinutes(duration);
+        LocalDateTime completedAt = !isTimeOut ? LocalDateTime.now() : attempt.getStartedAt().plusMinutes(duration);
 
         attempt.setCorrectAnswersCount(correctCount);
-        attempt.setCompletedAt(isTimeOut ? LocalDateTime.now() : LocalDateTime.now().plusMinutes(duration));
+        attempt.setCompletedAt(completedAt);
         attempt.setTotalScore(totalScore);
         attempt.setComplete(true);
         attempt.setExpGained(baseExp);
         attempt.setBonusExp(bonusExp);
-        attempt.setTimeSpent(calculateTimeSpent(attempt.getStartedAt(), completedAt, attemptId));
+        attempt.setTimeSpent(calculateTimeSpent(attemptId));
         examAttemptRepository.save(attempt);
 
         checkMissionExam(attempt);
 
         examAttemptDetailRepository.saveAll(details);
 
-        return examAttemptMapper.toExamSubmitResponse(attempt);
+        ExamSubmitResponse response = examAttemptMapper.toExamSubmitResponse(attempt);
+        response.setLevelInfo(newLevelInfo);
+
+        return response;
     }
 
     private void validateExamAttempt(ExamAttempt attempt, User user, Exam exam) {
@@ -172,7 +175,7 @@ public class ExamAttemptService {
         return java.util.concurrent.ThreadLocalRandom.current().nextInt(minBonusExp, maxBonusExp + 1);
     }
 
-    private String calculateTimeSpent(LocalDateTime startedAt, LocalDateTime completedAt, Integer attemptId) {
+    private String calculateTimeSpent(Integer attemptId) {
         var attempt = examAttemptRepository.findById(attemptId).orElseThrow(() -> new RuntimeException("Exam Attempt Not Found"));
         Duration durationBetween = Duration.between(attempt.getStartedAt(), attempt.getCompletedAt());
 

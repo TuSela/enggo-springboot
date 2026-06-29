@@ -29,6 +29,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -282,32 +283,37 @@ public class UserService {
         }
         String username = auth.getName();
 
-        // 1. Hỏi thử Redis (Sử dụng stringRedisTemplate mới)
+        // 1. Hỏi thử Redis xem user này đang đứng hạng mấy
         Long redisRank = stringRedisTemplate.opsForZSet().reverseRank(ELO_KEY, username);
 
         if (redisRank != null) {
+            // Redis trả về index từ 0, nên cần + 1 để ra số Hạng thực tế
             return redisRank.intValue() + 1;
         }
 
-        // 2. Fallback xuống MySQL nếu Redis chưa có dữ liệu
+        // 2. FALLBACK: Nếu Redis bị trống (ví dụ sau khi flushall hoặc mất điện server)
         User me = userRepository.findByUsername(username).orElse(null);
         if (me != null) {
-            List<User> allUsers = userRepository.findAll();
-            for (User u : allUsers) {
-                // Đẩy bằng stringRedisTemplate -> dữ liệu lưu xuống Redis sẽ cực kỳ sạch
+            // Lấy toàn bộ người chơi, sắp xếp chuẩn: Elo cao lên trước, bằng Elo thì Alphabet username đứng trước
+            List<User> topUsers = userRepository.findAll(Sort.by(
+                    Sort.Order.desc("elo"),
+                    Sort.Order.asc("username")
+            ));
+
+            // Đẩy đồng bộ hàng loạt lên Redis ZSet
+            for (User u : topUsers) {
                 stringRedisTemplate.opsForZSet().add(ELO_KEY, u.getUsername(), (double) u.getElo());
             }
 
+            // 3. Hỏi lại Redis lần cuối sau khi đã nạp đầy đủ dữ liệu
             Long freshRank = stringRedisTemplate.opsForZSet().reverseRank(ELO_KEY, username);
             if (freshRank != null) {
                 return freshRank.intValue() + 1;
             }
-
-            long higherUsersCount = userRepository.countByEloGreaterThan(me.getElo());
-            return (int) higherUsersCount + 1;
         }
 
-        return null;
+        // Trường hợp bất khả kháng không tìm thấy cả trong DB (User rác hoặc lỗi hệ thống)
+        return 0;
     }
 
     @Transactional

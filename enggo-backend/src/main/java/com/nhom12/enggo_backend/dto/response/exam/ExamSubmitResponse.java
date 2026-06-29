@@ -1,6 +1,7 @@
 package com.nhom12.enggo_backend.dto.response.exam;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.nhom12.enggo_backend.dto.response.gamification.LevelInfoResponse;
 import jakarta.persistence.Column;
 import lombok.Data;
 
@@ -22,5 +23,6 @@ public class ExamSubmitResponse {
     String timeSpent;
     Integer expGained;
     Integer bonusExp;
+    LevelInfoResponse levelInfo;
     List<ExamAttemptDetailResponse> detail;
 }

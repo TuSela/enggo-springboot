@@ -46,9 +46,9 @@ public class LevelService {
             Integer maxExp = nextConfig.getReqExp();
 
             expGainedInLevel = totalExp - minExp;
-            expRequiredInLevel = maxExp - expGainedInLevel;
+            expRequiredInLevel = maxExp - totalExp;
 
-            double progress = ((double) expGainedInLevel / expRequiredInLevel) * 100;
+            double progress = ((double) expGainedInLevel / (maxExp - minExp)) * 100;
             progressPercentage = (double) Math.round(progress * 100) / 100;
         }
 
