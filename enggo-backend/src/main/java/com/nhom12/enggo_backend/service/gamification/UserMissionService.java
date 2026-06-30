@@ -84,6 +84,29 @@ public class UserMissionService {
         return toProgressResponse(saved);
     }
 
+    // Dùng cho các mission dạng "streak": nếu điều kiện không còn thoả (vd: PVP_STREAK khi thua trận)
+    // thì tiến trình bị reset về 0 thay vì tăng lên.
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public void resetProgressSafely(Integer userId, Integer missionId) {
+        try {
+            resetProgress(userId, missionId);
+        } catch (Exception e) {
+            log.warn("Failed to reset mission {} for user {}: {}", missionId, userId, e.getMessage());
+        }
+    }
+
+    @Transactional
+    public MissionProgressResponse resetProgress(Integer userId, Integer missionId) {
+        MissionProgress progress = findProgress(userId, missionId);
+        if ("CLAIMED".equals(progress.getStatus())) {
+            throw new AppException(ErrorCode.INVALID_OPERATION);
+        }
+        progress.setCurrentValue(0);
+        progress.setStatus("IN_PROGRESS");
+        MissionProgress saved = missionProgressRepository.save(progress);
+        return toProgressResponse(saved);
+    }
+
     @Transactional
     public ClaimRewardResponse claimReward(Integer userId, Integer missionId) {
         MissionProgress progress = findProgress(userId, missionId);

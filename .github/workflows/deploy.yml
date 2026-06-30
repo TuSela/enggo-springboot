@@ -18,8 +18,8 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Đóng gói ứng dụng thành file JAR bằng Maven (Bỏ qua chạy test để build nhanh)
-        run: mvn clean package -DskipTests
+      - name: Đóng gói ứng dụng thành file JAR bằng Maven (Bỏ qua compile + chạy test để build nhanh)
+        run: mvn clean package -Dmaven.test.skip=true
         working-directory: enggo-backend
 
       - name: Đăng nhập vào tài khoản Docker Hub

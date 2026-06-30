@@ -3,6 +3,7 @@ package com.nhom12.enggo_backend.controller.gamification;
 import com.nhom12.enggo_backend.dto.request.ApiResponse;
 import com.nhom12.enggo_backend.dto.response.gamification.ClaimRewardResponse;
 import com.nhom12.enggo_backend.dto.response.gamification.MissionProgressResponse;
+import com.nhom12.enggo_backend.dto.response.gamification.MissionResponse;
 import com.nhom12.enggo_backend.service.UserService;
 import com.nhom12.enggo_backend.service.gamification.UserMissionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,10 +11,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Collections;
@@ -33,10 +34,10 @@ class UserMissionControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     private UserMissionService userMissionService;
 
-    @MockBean
+    @MockitoBean
     private UserService userService;
 
     private final Integer userId = 1;
@@ -55,12 +56,15 @@ class UserMissionControllerTest {
 
     @Test
     void getTodayMissions_success() throws Exception {
+        MissionResponse mission = MissionResponse.builder()
+                .id(missionId)
+                .title("Test Mission")
+                .build();
         MissionProgressResponse progress = MissionProgressResponse.builder()
                 .id(100)
                 .userId(userId)
                 .username("testUser")
-                .missionId(missionId)
-                .missionTitle("Test Mission")
+                .missionResponse(mission)
                 .currentValue(0)
                 .status("IN_PROGRESS")
                 .build();
@@ -70,13 +74,13 @@ class UserMissionControllerTest {
         mockMvc.perform(get("/gamification/missions/today"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(1000))
-                .andExpect(jsonPath("$.result[0].missionId").value(missionId));
+                .andExpect(jsonPath("$.result[0].missionResponse.id").value(missionId));
     }
 
     @Test
     void incrementProgress_defaultIncrement() throws Exception {
         MissionProgressResponse updated = MissionProgressResponse.builder()
-                .id(100).userId(userId).missionId(missionId).currentValue(1).status("IN_PROGRESS").build();
+                .id(100).userId(userId).currentValue(1).status("IN_PROGRESS").build();
         Mockito.when(userMissionService.incrementProgress(userId, missionId, 1)).thenReturn(updated);
 
         mockMvc.perform(post("/gamification/missions/{missionId}/progress", missionId)
@@ -88,7 +92,7 @@ class UserMissionControllerTest {
     @Test
     void incrementProgress_withBody() throws Exception {
         MissionProgressResponse updated = MissionProgressResponse.builder()
-                .id(100).userId(userId).missionId(missionId).currentValue(3).status("IN_PROGRESS").build();
+                .id(100).userId(userId).currentValue(3).status("IN_PROGRESS").build();
         Mockito.when(userMissionService.incrementProgress(userId, missionId, 2)).thenReturn(updated);
         Map<String, Integer> body = Collections.singletonMap("increment", 2);
         mockMvc.perform(post("/gamification/missions/{missionId}/progress", missionId)

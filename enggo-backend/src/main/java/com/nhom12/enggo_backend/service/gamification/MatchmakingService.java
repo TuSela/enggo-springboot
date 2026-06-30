@@ -60,12 +60,17 @@ public class MatchmakingService {
         LocalDateTime startOfDay = today.atStartOfDay();          // 00:00
         LocalDateTime endOfDay   = today.atTime(LocalTime.MAX); // 23:59:59.999...
 
-        // 3️⃣ Các missionType cần kiểm tra
-        List<String> targetTypes = List.of("PVP","PVP-FRIEND","PVP_PERFECT_SCORE","PVP_SPEED","PVP_STREAK");
+        // Các missionType cần kiểm tra
+        List<String> targetTypes = List.of("PVP", "PVP-FRIEND", "PVP_PERFECT_SCORE", "PVP_SPEED", "PVP_STREAK");
 
-        // 4️⃣ Lấy tất cả progress của hôm nay và lọc theo missionType
+        processPvpMissions(pvpMatch, pvpMatch.getPlayer1(), pvpMatch.getPlayer1Attempt(), targetTypes, startOfDay, endOfDay);
+        processPvpMissions(pvpMatch, pvpMatch.getPlayer2(), pvpMatch.getPlayer2Attempt(), targetTypes, startOfDay, endOfDay);
+    }
+
+    private void processPvpMissions(PvpMatch pvpMatch, User player, ExamAttempt attempt,
+                                    List<String> targetTypes, LocalDateTime startOfDay, LocalDateTime endOfDay) {
         List<MissionProgress> todayProgress = progressRepository
-                .findByUserIdAndDeadlineBetween(pvpMatch.getPlayer1().getId(), startOfDay, endOfDay)
+                .findByUserIdAndDeadlineBetween(player.getId(), startOfDay, endOfDay)
                 .stream()
                 .filter(p -> p.getMission() != null &&
                         targetTypes.contains(p.getMission().getMissionType()))
@@ -74,56 +79,70 @@ public class MatchmakingService {
                 .filter(p -> !"CLAIMED".equals(p.getStatus()))
                 .collect(Collectors.toList());
 
-        // Logger variable removed – will use class‑level logger
         if (todayProgress.isEmpty()) {
-            log.debug("User {} has no QUIZ‑related missions for today.", pvpMatch.getPlayer1().getUsername());
+            log.debug("User {} has no PVP-related missions for today.", player.getUsername());
             return;
         }
 
-        // 5️⃣ Giá trị tăng (ở đây +1, có thể thay bằng attempt.getScore() …)
-        int increment = 1;
+        // Người thắng trận này (match.getWinner() đã được set trước khi gọi checkMissionExam)
+        boolean isWinner = pvpMatch.getWinner() != null
+                && pvpMatch.getWinner().getId().equals(player.getId());
 
-        // 6️⃣ Cập nhật tiến độ qua service đã có (chạy trong transaction riêng,
-        // không thể làm rollback transaction finalizeMatch đang chứa exp/elo/streak)
+        boolean isPerfectScore = attempt != null
+                && pvpMatch.getExam() != null
+                && pvpMatch.getExam().getTotalQuestions() != null
+                && attempt.getCorrectAnswersCount() != null
+                && attempt.getCorrectAnswersCount().intValue() == pvpMatch.getExam().getTotalQuestions().intValue();
+
+        boolean isUnderOneMinute = isUnderOneMinutePvpTime(attempt != null ? attempt.getTimeSpent() : null);
+
         for (MissionProgress mp : todayProgress) {
-            userMissionService.incrementProgressSafely(pvpMatch.getPlayer1().getId(),
-                    mp.getMission().getId(),
-                    increment);
-            log.debug("Incremented mission {} (type={}) for user {} by {}.",
-                    mp.getMission().getId(),
-                    mp.getMission().getMissionType(),
-                    pvpMatch.getPlayer1().getUsername(),
-                    increment);
-        }
-        List<MissionProgress> todayProgress2 = progressRepository
-                .findByUserIdAndDeadlineBetween(pvpMatch.getPlayer2().getId(), startOfDay, endOfDay)
-                .stream()
-                .filter(p -> p.getMission() != null &&
-                        targetTypes.contains(p.getMission().getMissionType()))
-                .filter(p -> !"CLAIMED".equals(p.getStatus()))
-                .collect(Collectors.toList());
+            String missionType = mp.getMission().getMissionType();
 
-        // Logger variable removed – will use class‑level logger
-        if (todayProgress2.isEmpty()) {
-            log.debug("User {} has no QUIZ‑related missions for today.", pvpMatch.getPlayer2().getUsername());
-            return;
-        }
+            // PVP_STREAK: thắng thì tăng tiến độ lên 1, không thắng thì reset về 0
+            if ("PVP_STREAK".equals(missionType)) {
+                if (isWinner) {
+                    userMissionService.incrementProgressSafely(player.getId(), mp.getMission().getId(), 1);
+                    log.debug("Incremented PVP_STREAK mission {} for user {} (thắng trận).",
+                            mp.getMission().getId(), player.getUsername());
+                } else {
+                    userMissionService.resetProgressSafely(player.getId(), mp.getMission().getId());
+                    log.debug("Reset PVP_STREAK mission {} for user {} (không thắng).",
+                            mp.getMission().getId(), player.getUsername());
+                }
+                continue;
+            }
 
-        // 5️⃣ Giá trị tăng (ở đây +1, có thể thay bằng attempt.getScore() …)
-        int increment2 = 1;
+            boolean shouldIncrement = switch (missionType) {
+                case "PVP_SPEED" -> isUnderOneMinute; // hoàn thành trận dưới 1 phút
+                case "PVP_PERFECT_SCORE" -> isPerfectScore; // đúng 100% số câu
+                default -> true; // PVP, PVP-FRIEND: chỉ cần hoàn thành trận là tăng tiến độ
+            };
 
-        // 6️⃣ Cập nhật tiến độ qua service đã có
-        for (MissionProgress mp : todayProgress2) {
-            userMissionService.incrementProgressSafely(pvpMatch.getPlayer2().getId(),
-                    mp.getMission().getId(),
-                    increment2);
-            log.debug("Incremented mission {} (type={}) for user {} by {}.",
-                    mp.getMission().getId(),
-                    mp.getMission().getMissionType(),
-                    pvpMatch.getPlayer2().getUsername(),
-                    increment2);
+            if (!shouldIncrement) {
+                log.debug("Mission {} (type={}) chưa thoả điều kiện cho user {}, bỏ qua.",
+                        mp.getMission().getId(), missionType, player.getUsername());
+                continue;
+            }
+
+            userMissionService.incrementProgressSafely(player.getId(), mp.getMission().getId(), 1);
+            log.debug("Incremented mission {} (type={}) for user {} by 1.",
+                    mp.getMission().getId(), missionType, player.getUsername());
         }
     }
+
+    // PvP lưu timeSpent dạng tổng số giây (xem MatchmakingService#submit... duration.getSeconds())
+    private boolean isUnderOneMinutePvpTime(String timeSpentSeconds) {
+        if (timeSpentSeconds == null) {
+            return false;
+        }
+        try {
+            return Long.parseLong(timeSpentSeconds.trim()) < 60;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
 
 
     private final StringRedisTemplate redisTemplate;
@@ -502,31 +521,28 @@ public class MatchmakingService {
         userService.updatePlayerElo(winner.getId(), change);
         userService.updatePlayerElo(loser.getId(), -change);
     }
-        // Award badge based on current elo (every 100 points)
-        private Badge awardBadgeIfEligible(User user) {
+    // Award badge based on current elo (every 100 points)
+    private Badge awardBadgeIfEligible(User user) {
 
-            int rankLevel = user.getElo() / 100; // integer division
-            // Define badge names in order of ranks (starting from rank 0 = no badge)
-            String[] badgeNames = new String[]{
-                    "bronze_1.0",
-                    "bronze_2.0",
-                    "bronze_3.0",
-                    "silver_1.0",
-                    "silver_2.0",
-                    "silver_3.0",
-                    "gold_1.0",
-                    "gold_2.0",
-                    "gold_3.0",
-                    "challenger_0.0"
-            };
-            // Clamp index to max badge
-            int idx = Math.min(rankLevel, badgeNames.length - 1);
-            String badgeName = badgeNames[idx];
-            // Find badge entity
-            System.out.println(badgeName);
-           return badgeRepository.findByBadgeName(badgeName);
-        }
+        int rankLevel = user.getElo() / 100; // integer division
+        // Define badge names in order of ranks (starting from rank 0 = no badge)
+        String[] badgeNames = new String[]{
+                "bronze_1.0",
+                "bronze_2.0",
+                "bronze_3.0",
+                "silver_1.0",
+                "silver_2.0",
+                "silver_3.0",
+                "gold_1.0",
+                "gold_2.0",
+                "gold_3.0",
+                "challenger_0.0"
+        };
+        // Clamp index to max badge
+        int idx = Math.min(rankLevel, badgeNames.length - 1);
+        String badgeName = badgeNames[idx];
+        // Find badge entity
+        System.out.println(badgeName);
+        return badgeRepository.findByBadgeName(badgeName);
     }
-
-
-
+}
