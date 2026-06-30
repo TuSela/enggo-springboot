@@ -114,7 +114,7 @@ public class MatchmakingService {
             }
 
             boolean shouldIncrement = switch (missionType) {
-                case "PVP_SPEED" -> isUnderOneMinute; // hoàn thành trận dưới 1 phút
+                case "PVP_SPEED" -> isUnderOneMinute && isPerfectScore; // dưới 1 phút và đúng 100%
                 case "PVP_PERFECT_SCORE" -> isPerfectScore; // đúng 100% số câu
                 default -> true; // PVP, PVP-FRIEND: chỉ cần hoàn thành trận là tăng tiến độ
             };
@@ -546,3 +546,6 @@ public class MatchmakingService {
         return badgeRepository.findByBadgeName(badgeName);
     }
 }
+
+
+
