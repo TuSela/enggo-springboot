@@ -36,6 +36,8 @@ import org.springframework.util.CollectionUtils;
 
 import java.text.ParseException;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.StringJoiner;
@@ -95,7 +97,10 @@ public class AuthenticationService {
         // Determine today's start/end
         java.time.LocalDateTime now = java.time.LocalDateTime.now();
         java.time.LocalDateTime startOfDay = now.withHour(0).withMinute(0).withSecond(0).withNano(0);
-        java.time.LocalDateTime endOfDay = startOfDay.plusDays(1);
+        LocalDate today = LocalDate.now();
+
+// Kết quả: YYYY-MM-DDT23:59:00
+        LocalDateTime endOfDay = today.atTime(23, 59);
         // 1️⃣ Mark any unfinished progress from previous days as FAILED (or EXPIRED)
         java.util.List<com.nhom12.enggo_backend.entity.gamification.MissionProgress> unfinished =
                 missionProgressRepository.findByUserIdAndDeadlineBeforeAndStatusNot(user.getId(), startOfDay, "CLAIMED");

@@ -268,8 +268,8 @@ public class ExamAttemptService {
 
         Map<String, QuestionOption> rightOptionsByMatchKey = question.getOptions().stream()
                 .filter(o -> o.getOption_group() != null
-                                && o.getOption_group().equalsIgnoreCase("RIGHT")
-                                && o.getMatch_key() != null)
+                        && o.getOption_group().equalsIgnoreCase("RIGHT")
+                        && o.getMatch_key() != null)
                 .collect(Collectors.toMap(QuestionOption::getMatch_key, o -> o, (o1, o2) -> o1));
 
         List<MatchingResultResponse> matchingResults = question.getOptions().stream()
@@ -509,7 +509,7 @@ public class ExamAttemptService {
         LocalDateTime endOfDay   = today.atTime(LocalTime.MAX); // 23:59:59.999...
 
         // 3️⃣ Các missionType cần kiểm tra
-        List<String> targetTypes = List.of("QUIZ", "QUIZ_SPEED", "QUIZ_STREAK");
+        List<String> targetTypes = List.of("QUIZ", "QUIZ_SPEED", "QUIZ_PERFECT_SCORE", "QUIZ_STREAK");
 
         // 4️⃣ Lấy tất cả progress của hôm nay và lọc theo missionType
         List<MissionProgress> todayProgress = progressRepository
@@ -523,26 +523,58 @@ public class ExamAttemptService {
                 .filter(p -> !"CLAIMED".equals(p.getStatus()))
                 .collect(Collectors.toList());
 
-        // Logger variable removed – will use class‑level logger
         if (todayProgress.isEmpty()) {
             log.debug("User {} has no QUIZ‑related missions for today.", user.getUsername());
             return;
         }
 
-        // 5️⃣ Giá trị tăng (ở đây +1, có thể thay bằng attempt.getScore() …)
-        int increment = 1;
+        // 5️⃣ Tính sẵn các điều kiện đặc thù theo loại mission
+        boolean isPerfectScore = attempt.getExam() != null
+                && attempt.getExam().getTotalQuestions() != null
+                && attempt.getCorrectAnswersCount() != null
+                && attempt.getCorrectAnswersCount().intValue() == attempt.getExam().getTotalQuestions().intValue();
+
+        boolean isUnderOneMinute = isUnderOneMinuteQuizTime(attempt.getTimeSpent());
 
         // 6️⃣ Cập nhật tiến độ qua service đã có (chạy trong transaction riêng,
         // không thể làm rollback transaction submitExam đang chứa exp/level/streak)
         for (MissionProgress mp : todayProgress) {
+            String missionType = mp.getMission().getMissionType();
+
+            boolean shouldIncrement = switch (missionType) {
+                case "QUIZ_SPEED" -> isUnderOneMinute; // hoàn thành dưới 1 phút
+                case "QUIZ_PERFECT_SCORE" -> isPerfectScore; // đúng 100% số câu
+                default -> true; // QUIZ, QUIZ_STREAK: chỉ cần hoàn thành bài là tăng tiến độ
+            };
+
+            if (!shouldIncrement) {
+                log.debug("Mission {} (type={}) chưa thoả điều kiện cho user {}, bỏ qua.",
+                        mp.getMission().getId(), missionType, user.getUsername());
+                continue;
+            }
+
             userMissionService.incrementProgressSafely(user.getId(),
                     mp.getMission().getId(),
-                    increment);
-            log.debug("Incremented mission {} (type={}) for user {} by {}.",
+                    1);
+            log.debug("Incremented mission {} (type={}) for user {} by 1.",
                     mp.getMission().getId(),
-                    mp.getMission().getMissionType(),
-                    user.getUsername(),
-                    increment);
+                    missionType,
+                    user.getUsername());
+        }
+    }
+
+    // Quiz lưu timeSpent dạng "mm:ss" (xem calculateTimeSpent)
+    private boolean isUnderOneMinuteQuizTime(String timeSpent) {
+        if (timeSpent == null || !timeSpent.contains(":")) {
+            return false;
+        }
+        try {
+            String[] parts = timeSpent.split(":");
+            long minutes = Long.parseLong(parts[0].trim());
+            long seconds = Long.parseLong(parts[1].trim());
+            return (minutes * 60 + seconds) < 60;
+        } catch (NumberFormatException e) {
+            return false;
         }
     }
 }
