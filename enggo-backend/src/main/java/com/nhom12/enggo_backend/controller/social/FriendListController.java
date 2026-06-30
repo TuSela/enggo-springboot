@@ -2,7 +2,9 @@ package com.nhom12.enggo_backend.controller.social;
 
 import com.nhom12.enggo_backend.dto.request.ApiResponse;
 import com.nhom12.enggo_backend.dto.response.social.FriendResponse;
+import com.nhom12.enggo_backend.dto.response.social.NotificationPayload;
 import com.nhom12.enggo_backend.entity.identity.User;
+import com.nhom12.enggo_backend.entity.social.FriendRequest;
 import com.nhom12.enggo_backend.repository.UserRepository;
 import com.nhom12.enggo_backend.repository.social.FriendRequestRepository;
 import com.nhom12.enggo_backend.service.social.FriendListService;
@@ -64,6 +66,26 @@ public class FriendListController {
         List<Integer> ids = friendRequestRepository.findReceiverIdsBySender(currentUser); // ← chữ thường
         return ApiResponse.<List<Integer>>builder()
                 .result(ids)
+                .build();
+    }
+
+    @GetMapping("/requests/pending")
+    public ApiResponse<List<NotificationPayload>> getPendingFriendRequests() {
+        User currentUser = getCurrentUser();
+        List<FriendRequest> requests = friendRequestRepository.findAllByReceiver(currentUser);
+
+        List<NotificationPayload> payloads = requests.stream()
+                .map(request -> NotificationPayload.builder()
+                        .type("FRIEND_REQUEST")
+                        .fromUserId(request.getSender().getId())
+                        .fromUsername(request.getSender().getUsername())
+                        .requestId(request.getId())
+                        .message(request.getSender().getUsername() + " đã gửi lời mời kết bạn cho bạn")
+                        .build())
+                .toList();
+
+        return ApiResponse.<List<NotificationPayload>>builder()
+                .result(payloads)
                 .build();
     }
 }

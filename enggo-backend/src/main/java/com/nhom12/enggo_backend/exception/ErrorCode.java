@@ -30,7 +30,8 @@ public enum ErrorCode {
     FRIEND_REQUEST_NOT_FOUND(1012, "Không tìm thấy lời mời kết bạn hợp lệ", HttpStatus.NOT_FOUND),
     PASSWORD_FIELDS_REQUIRED(1012, "Yêu cầu nhập không được bỏ trống", HttpStatus.BAD_REQUEST),
     PASSWORD_CONFIRM_NOT_MATCH(1013, "Your password does not match" , HttpStatus.BAD_REQUEST ),
-    NEW_PASSWORD_SAME_AS_OLD(1013, "New password same as old" , HttpStatus.BAD_REQUEST ),;
+    NEW_PASSWORD_SAME_AS_OLD(1013, "New password same as old" , HttpStatus.BAD_REQUEST ),
+    FRIEND_OFFLINE(1016, "Bạn này đang offline, không thể mời PVP", HttpStatus.BAD_REQUEST),;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {
         this.code = code;
