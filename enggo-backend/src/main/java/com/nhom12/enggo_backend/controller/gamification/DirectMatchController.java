@@ -4,6 +4,8 @@ import com.nhom12.enggo_backend.dto.request.ApiResponse;
 import com.nhom12.enggo_backend.dto.request.exam.RandomBlueprintRequest;
 import com.nhom12.enggo_backend.dto.response.gamification.PvpMatchResponse;
 import com.nhom12.enggo_backend.entity.identity.User;
+import com.nhom12.enggo_backend.exception.AppException;
+import com.nhom12.enggo_backend.exception.ErrorCode;
 import com.nhom12.enggo_backend.repository.UserRepository;
 import com.nhom12.enggo_backend.repository.exam.ThemeRepository;
 import com.nhom12.enggo_backend.service.gamification.MatchmakingService;
@@ -61,11 +63,19 @@ public class DirectMatchController {
             @RequestBody RandomBlueprintRequest request) {
 
         User currentUser = getCurrentUser();
-        PvpMatchResponse match = matchmakingService.createDirectMatch(
-                currentUser.getId(), friendId, request);
 
         User friend = userRepository.findById(friendId)
                 .orElseThrow(() -> new RuntimeException("Friend not found"));
+
+        // Chặn mời PVP khi bạn đang offline: luồng mời trực tiếp này tạo
+        // PvpMatch + sinh đề thi ngay lập tức và không có cơ chế timeout,
+        // nên nếu người nhận offline thì match sẽ "treo" vô thời hạn.
+        if (!"ONLINE".equalsIgnoreCase(friend.getStatus())) {
+            throw new AppException(ErrorCode.FRIEND_OFFLINE);
+        }
+
+        PvpMatchResponse match = matchmakingService.createDirectMatch(
+                currentUser.getId(), friendId, request);
 
         String themeNames = getThemeNames(request.getThemeIds());
         String difficultyLabel = getDifficultyLabel(request.getDifficulty());
@@ -145,13 +155,23 @@ public class DirectMatchController {
     public ApiResponse<Boolean> declineInvite(@PathVariable Integer matchId) {
         User currentUser = getCurrentUser();
         String player1Username = matchmakingService.getPlayer1Username(matchId);
+        String player2Username = matchmakingService.getPlayer2Username(matchId);
+
+        // Bug cũ: luôn gửi thông báo huỷ cho player1, kể cả khi chính player1
+        // là người huỷ (lúc đó player2 không hề được báo, bị treo vô thời hạn
+        // trong WaitingRoomActivity). Giờ xác định đúng người NHẬN thông báo
+        // là người còn lại, không phải người vừa bấm huỷ.
+        String recipientUsername = currentUser.getUsername().equals(player1Username)
+                ? player2Username
+                : player1Username;
 
         Map<String, Object> event = new HashMap<>();
         event.put("type", "PVP_DECLINED");
         event.put("matchId", matchId);
+        event.put("fromUserId", currentUser.getId());
         event.put("message", currentUser.getUsername() + " đã từ chối lời mời");
 
-        messagingTemplate.convertAndSendToUser(player1Username, "/queue/pvp", (Object) event);
+        messagingTemplate.convertAndSendToUser(recipientUsername, "/queue/pvp", (Object) event);
         return ApiResponse.<Boolean>builder().result(true).build();
     }
 }
