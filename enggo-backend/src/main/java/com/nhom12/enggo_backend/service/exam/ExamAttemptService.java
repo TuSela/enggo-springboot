@@ -13,6 +13,8 @@ import com.nhom12.enggo_backend.dto.response.gamification.LevelInfoResponse;
 import com.nhom12.enggo_backend.entity.exam.*;
 import com.nhom12.enggo_backend.entity.gamification.MissionProgress;
 import com.nhom12.enggo_backend.entity.identity.User;
+import com.nhom12.enggo_backend.exception.AppException;
+import com.nhom12.enggo_backend.exception.ErrorCode;
 import com.nhom12.enggo_backend.mapper.exam.ExamAttemptMapper;
 import com.nhom12.enggo_backend.repository.UserRepository;
 import com.nhom12.enggo_backend.repository.exam.*;
@@ -384,6 +386,87 @@ public class ExamAttemptService {
         response.setExpGained(attempt.getExpGained());
         response.setBonusExp(attempt.getBonusExp());
         response.setDetail(detailsResponses);
+
+        return response;
+    }
+
+    /**
+     * Lấy chi tiết một lượt làm bài để hiển thị màn hình "Xem lại bài làm".
+     * - Chỉ chủ sở hữu attempt mới được xem (chống lộ dữ liệu người khác).
+     * - Chỉ cho xem khi attempt đã hoàn thành (đang làm dở thì chưa có đáp án đúng để lộ).
+     * - Trả kèm số liệu tổng quan (số câu đúng/sai, % chính xác) để FE không phải tự tính.
+     */
+    public ExamReviewResponse getAttemptReview(Integer attemptId) {
+        String username = Objects.requireNonNull(
+                SecurityContextHolder.getContext().getAuthentication()).getName();
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        ExamAttempt attempt = examAttemptRepository.findById(attemptId)
+                .orElseThrow(() -> new AppException(ErrorCode.RESOURCE_NOT_FOUND));
+
+        if (attempt.getUser() == null || !attempt.getUser().getId().equals(user.getId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        if (attempt.getComplete() == null || !attempt.getComplete()) {
+            throw new AppException(ErrorCode.INVALID_OPERATION);
+        }
+
+        Exam exam = attempt.getExam();
+
+        // map questionId -> thứ tự câu hỏi trong đề, để sắp lại đúng thứ tự khi làm bài
+        Map<Integer, Integer> questionOrderMap = exam.getExamQuestions().stream()
+                .collect(Collectors.toMap(
+                        eq -> eq.getQuestion().getId(),
+                        ExamQuestion::getOrderPriority
+                ));
+
+        List<ExamAttemptDetail> details = examAttemptDetailRepository.findByAttemptId(attemptId);
+
+        List<ExamAttemptDetailResponse> questionResponses = details.stream()
+                .map(detail -> {
+                    ExamAttemptDetailResponse detailResponse = new ExamAttemptDetailResponse();
+                    detailResponse.setScore(detail.getScore());
+                    detailResponse.setIsCorrect(detail.isCorrect());
+                    detailResponse.setOrderPriority(
+                            questionOrderMap.getOrDefault(detail.getQuestion().getId(), 0));
+                    detailResponse.setQuestion(buildQuestionResultFromDetail(detail));
+                    return detailResponse;
+                })
+                .sorted(Comparator.comparing(ExamAttemptDetailResponse::getOrderPriority))
+                .toList();
+
+        int totalQuestions = exam.getTotalQuestions() != null ? exam.getTotalQuestions() : questionResponses.size();
+        int correctCount = attempt.getCorrectAnswersCount() != null ? attempt.getCorrectAnswersCount() : 0;
+        int wrongCount = Math.max(totalQuestions - correctCount, 0);
+
+        BigDecimal accuracyPercent = totalQuestions > 0
+                ? BigDecimal.valueOf(correctCount)
+                .multiply(BigDecimal.valueOf(100))
+                .divide(BigDecimal.valueOf(totalQuestions), 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        int expGained = attempt.getExpGained() != null ? attempt.getExpGained() : 0;
+        int bonusExp = attempt.getBonusExp() != null ? attempt.getBonusExp() : 0;
+
+        ExamReviewResponse response = new ExamReviewResponse();
+        response.setAttemptId(attempt.getId());
+        response.setExamId(exam.getId());
+        response.setExamTitle(exam.getTitle());
+        response.setDifficulty(exam.getDifficulty());
+        response.setTotalScore(attempt.getTotalScore());
+        response.setTotalQuestions(totalQuestions);
+        response.setCorrectAnswersCount(correctCount);
+        response.setWrongAnswersCount(wrongCount);
+        response.setAccuracyPercent(accuracyPercent);
+        response.setStartedAt(attempt.getStartedAt());
+        response.setCompletedAt(attempt.getCompletedAt());
+        response.setTimeSpent(attempt.getTimeSpent());
+        response.setExpGained(expGained);
+        response.setBonusExp(bonusExp);
+        response.setTotalExpGained(expGained + bonusExp);
+        response.setQuestions(questionResponses);
 
         return response;
     }

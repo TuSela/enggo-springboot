@@ -9,5 +9,6 @@ import java.util.List;
 public class ExamAttemptDetailResponse {
     Integer orderPriority;
     BigDecimal score;
+    Boolean isCorrect;
     QuestionResultResponse question;
 }
