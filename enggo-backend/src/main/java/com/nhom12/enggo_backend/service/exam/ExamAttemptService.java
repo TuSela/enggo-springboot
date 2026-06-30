@@ -542,7 +542,7 @@ public class ExamAttemptService {
             String missionType = mp.getMission().getMissionType();
 
             boolean shouldIncrement = switch (missionType) {
-                case "QUIZ_SPEED" -> isUnderOneMinute; // hoàn thành dưới 1 phút
+                case "QUIZ_SPEED" -> isUnderOneMinute && isPerfectScore; // dưới 1 phút và đúng 100%
                 case "QUIZ_PERFECT_SCORE" -> isPerfectScore; // đúng 100% số câu
                 default -> true; // QUIZ, QUIZ_STREAK: chỉ cần hoàn thành bài là tăng tiến độ
             };
