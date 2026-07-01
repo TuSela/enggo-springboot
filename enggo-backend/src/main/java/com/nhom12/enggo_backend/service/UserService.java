@@ -77,6 +77,7 @@ public class UserService {
         Badge badge2 = badgeRepository.findById(21).orElseThrow();
         UserBadge userBadge = new UserBadge();
         userBadge.setBadge(badge2);
+        user.setWinStreak(0);
 
         try {
             user = userRepository.save(user);

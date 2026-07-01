@@ -100,7 +100,7 @@ public class AuthenticationService {
         LocalDate today = LocalDate.now();
         LocalDateTime endOfDay = today.atTime(23, 59, 59);
 
-        
+
         // 1️⃣ Mark any unfinished progress from previous days as FAILED (or EXPIRED)
         java.util.List<com.nhom12.enggo_backend.entity.gamification.MissionProgress> unfinished =
                 missionProgressRepository.findByUserIdAndDeadlineBeforeAndStatusNot(user.getId(), startOfDay, "CLAIMED");
