@@ -51,10 +51,8 @@ import com.nhom12.enggo_backend.entity.gamification.MissionProgress;
 @Slf4j
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AuthenticationService {
-    // Repositories needed for first‑login mission assignment
     final com.nhom12.enggo_backend.repository.gamification.MissionProgressRepository missionProgressRepository;
     final com.nhom12.enggo_backend.repository.gamification.MissionRepository missionRepository;
-    // Number of random missions to assign on first login each day
     private static final int MISSIONS_PER_LOGIN = 3;
     UserRepository userRepository;
     InvalidatedTokenRepository invalidatedTokenRepository;
@@ -97,10 +95,11 @@ public class AuthenticationService {
         // Determine today's start/end
         java.time.LocalDateTime now = java.time.LocalDateTime.now();
         java.time.LocalDateTime startOfDay = now.withHour(0).withMinute(0).withSecond(0).withNano(0);
-        LocalDate today = LocalDate.now();
 
-// Kết quả: YYYY-MM-DDT23:59:00
-        LocalDateTime endOfDay = today.atTime(23, 59);
+        // Sửa tại đây: Đặt chính xác 23:59:59 ngày hôm nay
+        LocalDate today = LocalDate.now();
+        LocalDateTime endOfDay = today.atTime(23, 59, 59);
+
         // 1️⃣ Mark any unfinished progress from previous days as FAILED (or EXPIRED)
         java.util.List<com.nhom12.enggo_backend.entity.gamification.MissionProgress> unfinished =
                 missionProgressRepository.findByUserIdAndDeadlineBeforeAndStatusNot(user.getId(), startOfDay, "CLAIMED");
@@ -123,7 +122,7 @@ public class AuthenticationService {
                         .mission(mission)
                         .currentValue(0)
                         .status("IN_PROGRESS")
-                        .deadline(endOfDay)
+                        .deadline(endOfDay) // Đã gán đúng deadline bằng endOfDay (23:59:59)
                         .build();
                 missionProgressRepository.save(progress);
             }
@@ -142,7 +141,7 @@ public class AuthenticationService {
             Date expiryTime = signToken.getJWTClaimsSet().getExpirationTime();
 
             InvalidatedToken invalidatedToken =
-                InvalidatedToken.builder().id(jit).expiryTime(expiryTime).build();
+                    InvalidatedToken.builder().id(jit).expiryTime(expiryTime).build();
 
             invalidatedTokenRepository.save(invalidatedToken);
         } catch (AppException exception){
@@ -206,7 +205,7 @@ public class AuthenticationService {
 
         Date expiryTime = (isRefresh)
                 ? new Date(signedJWT.getJWTClaimsSet().getIssueTime()
-                    .toInstant().plus(REFRESHABLE_DURATION, ChronoUnit.SECONDS).toEpochMilli())
+                .toInstant().plus(REFRESHABLE_DURATION, ChronoUnit.SECONDS).toEpochMilli())
                 : signedJWT.getJWTClaimsSet().getExpirationTime();
 
         var verified = signedJWT.verify(verifier);
